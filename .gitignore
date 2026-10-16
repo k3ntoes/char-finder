@@ -79,6 +79,11 @@ data2.json
 .beads/embeddeddolt/
 .beads/proxieddb/
 .beads-credential-key
-*.db-journal
+.db-journal
 *.db-wal
 *.db-shm
+
+# Code Intelligence & Analysis Outputs
+graphify-out/
+graphify-out
+.gitnexus/
