@@ -1,0 +1,28 @@
+# GitNexus Ignore File (.gitnexusignore)
+# Standard gitignore-style syntax for excluding files/directories from code analysis and indexing.
+
+# Python cache & virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Tool outputs
+.gitnexus/
+graphify-out/
+
+# Issue trackers & IDE / agent configuration
+.beads/
+.codex/
+.claude/
+
+# Large JSON datasets & local databases
+data.json
+data2.json
+*.db
+*.sqlite
+*.sqlite3

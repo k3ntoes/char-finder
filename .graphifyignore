@@ -1,0 +1,28 @@
+# Graphify Ignore File (.graphifyignore)
+# Standard gitignore-style syntax for excluding files/directories from graph extraction.
+
+# Python cache & virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Tool outputs
+graphify-out/
+.gitnexus/
+
+# Issue trackers & IDE / agent configuration
+.beads/
+.codex/
+.claude/
+
+# Large JSON datasets & local databases
+data.json
+data2.json
+*.db
+*.sqlite
+*.sqlite3
