@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Capo Finder{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        ⚙️ Application Settings & Authentication
+    </h2>
+
+    {% if message %}
+    <div style="background-color: rgba(16, 185, 129, 0.2); border: 1px solid var(--good); color: var(--text-color); padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+        {{ message }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/settings" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div>
+            <label for="ntfy_topic" style="font-weight: 600; display: block; margin-bottom: 0.5rem;">ntfy.sh Notification Topic</label>
+            <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                Enter your ntfy.sh topic name to receive push alerts when high-value steals (Score ≥ 80) are detected.
+            </p>
+            <input type="text" id="ntfy_topic" name="ntfy_topic" value="{{ ntfy_topic }}" placeholder="e.g. my-capo-steals-topic" style="width: 100%;">
+        </div>
+
+        <div>
+            <label for="headers_text" style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Browser Request Headers (Raw)</label>
+            <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                Paste raw HTTP request headers copied from browser DevTools (Network tab when visiting thesyndicate.games/market). One header per line: <br>
+                <code>Cookie: ...</code><br>
+                <code>Authorization: ...</code>
+            </p>
+            <textarea id="headers_text" name="headers_text" rows="8" placeholder="Cookie: ...&#10;Authorization: ..." style="width: 100%; background-color: var(--card-bg); border: 1px solid var(--border); color: var(--text-color); padding: 0.5rem; border-radius: 0.375rem; font-family: monospace; font-size: 0.8125rem;">{{ headers_text }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn">💾 Save Settings</button>
+            <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </form>
+
+    <hr style="border: none; border-top: 1px solid var(--border); margin: 2rem 0;">
+
+    <div>
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem;">📦 Demo & Fallback Mode</h3>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+            If you do not have API headers configured or live API access is unavailable, you can instantly load offline sample data (`data2.json`).
+        </p>
+        <form method="POST" action="/settings/load-sample">
+            <button type="submit" class="btn btn-secondary" style="background-color: rgba(59, 130, 246, 0.2); border: 1px solid var(--accent);">
+                📥 Load Sample Data (`data2.json`)
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

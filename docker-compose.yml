@@ -1,0 +1,10 @@
+services:
+  char-finder:
+    build: .
+    container_name: char-finder
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./char_finder.db:/app/char_finder.db
+      - ./latest_market_data.json:/app/latest_market_data.json
+    restart: unless-stopped

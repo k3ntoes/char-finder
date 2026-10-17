@@ -57,7 +57,14 @@ Before writing, refactoring, or adding any code, the agent MUST review and stric
 
 ---
 
-## 7. 🧹 Code Cleanliness & Style
+## 7. 🧹 Code Cleanliness, Style & AI Context Optimization
 - **Type Annotations**: Use Python 3.10+ modern type hints (`int | None`, `list[dict]`, `dict[tuple[str, int], tuple[float, int]]`).
 - **Explicit Logging**: Use standard `logging` for tracking background job runs, errors, and fetch cycles.
 - **Documentation**: Preserve existing docstrings and comments. Comment non-obvious algorithms (e.g., HBDS scoring logic).
+- **Max Lines per File (AI Context Efficiency)**:
+  - **Target Range**: Aim for **150 to 300 lines per file**, with a strict ceiling of **400–500 lines**.
+  - **Rationale**:
+    - **Token Efficiency & Context Window**: Large monolithic files waste context tokens when agents read files via `view_file`, flooding context with noise.
+    - **Attention Degradation**: LLMs suffer from "lost in the middle" phenomena when instructions or code structures are buried inside massive files.
+    - **Diff Precision & Conflict Avoidance**: Smaller, single-purpose files yield cleaner, more precise patches and minimize merge/diff collisions during multi-agent workflows.
+  - **Micro-Modularity**: Split unrelated responsibilities into dedicated single-purpose modules instead of accumulating bloated utility or helper scripts.

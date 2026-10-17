@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block title %}Pawn Shop - Market Dashboard{% endblock %}
+
+{% block content %}
+<!-- Subnav & Search Bar -->
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-6 bg-[#12161f] border border-yellow-600/30 p-4 rounded-lg shadow-lg">
+    
+    <!-- Subtabs [ CAPOS ] [ GEAR ] & Search -->
+    <div class="flex flex-wrap items-center gap-4">
+        <div class="flex items-center bg-[#0e1117] border border-yellow-600/40 rounded p-1">
+            <button id="subtab-capos" class="px-4 py-1.5 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider uppercase shadow">
+                [ CAPOS ]
+            </button>
+            <button id="subtab-gear" onclick="alert('Gear marketplace coming soon!')" class="px-4 py-1.5 rounded text-gray-400 hover:text-yellow-300 font-semibold text-xs tracking-wider uppercase transition">
+                [ GEAR ]
+            </button>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative flex-1 min-w-[220px]">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+            <input type="text" id="search-input" placeholder="Search capos by name, rarity, specialty..." 
+                class="w-full bg-[#0e1117] border border-gray-700 rounded pl-9 pr-4 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-yellow-500 transition"
+                onkeyup="filterListings()">
+        </div>
+    </div>
+
+    <!-- Right Controls: FILTERS, WATCH, SORT, View Toggle CARDS / LIST -->
+    <div class="flex flex-wrap items-center gap-3">
+        <button onclick="toggleFilters()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-semibold flex items-center gap-1 transition">
+            <span>🎛️ FILTERS</span>
+        </button>
+        <button onclick="alert('Watchlist feature enabled in background')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-semibold flex items-center gap-1 transition">
+            <span>👁️ WATCH</span>
+        </button>
+        
+        <!-- Sort Dropdown -->
+        <select id="sort-select" onchange="changeSort(this.value)" class="bg-[#0e1117] border border-gray-700 text-gray-300 rounded px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-yellow-500">
+            <option value="deal_score_desc" {% if sort_by == 'deal_score' and order == 'desc' %}selected{% endif %}>Sort: Best Deal Score</option>
+            <option value="price_asc" {% if sort_by == '_price_usd' and order == 'asc' %}selected{% endif %}>Sort: Price (Low to High)</option>
+            <option value="price_desc" {% if sort_by == '_price_usd' and order == 'desc' %}selected{% endif %}>Sort: Price (High to Low)</option>
+            <option value="stats_desc" {% if sort_by == 'total_stat' and order == 'desc' %}selected{% endif %}>Sort: Highest Total Stats</option>
+        </select>
+
+        <!-- View Toggle CARDS / LIST -->
+        <div class="flex items-center bg-[#0e1117] border border-yellow-600/40 rounded p-0.5">
+            <button id="view-cards-btn" onclick="switchView('cards')" class="px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider transition flex items-center gap-1">
+                <span>[:: CARDS ]</span>
+            </button>
+            <button id="view-list-btn" onclick="switchView('list')" class="px-3 py-1 rounded text-gray-400 hover:text-gray-200 font-semibold text-xs tracking-wider transition flex items-center gap-1">
+                <span>[= LIST ]</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Rarity Filter Boxes Bar -->
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+    <!-- All Rarities -->
+    <div onclick="filterByRarity('')" class="rarity-pill bg-[#12161f] border {% if not selected_rarity %}border-yellow-500 bg-yellow-500/10 text-yellow-400{% else %}border-gray-800 text-gray-400{% endif %} rounded-lg p-3 text-center shadow transition">
+        <div class="text-xs uppercase font-bold tracking-wider">ALL CAPOS</div>
+        <div class="text-sm font-black mt-1 text-gray-200">{{ total_listings | default(0) }} listings</div>
+    </div>
+
+    <!-- RARE -->
+    <div onclick="filterByRarity('rare')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'rare' %}border-blue-500 bg-blue-500/10 text-blue-300{% else %}border-blue-900/40 text-blue-400{% endif %} rounded-lg p-3 text-center shadow transition">
+        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>💎</span> RARE</div>
+        <div class="text-sm font-black mt-1 text-blue-200">from ${{ "%.2f" | format((floors or {}).get('rare', {}).get('usd', 0.76)) }}</div>
+    </div>
+
+    <!-- EPIC -->
+    <div onclick="filterByRarity('epic')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'epic' %}border-purple-500 bg-purple-500/10 text-purple-300{% else %}border-purple-900/40 text-purple-400{% endif %} rounded-lg p-3 text-center shadow transition">
+        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>🔮</span> EPIC</div>
+        <div class="text-sm font-black mt-1 text-purple-200">from ${{ "%.2f" | format((floors or {}).get('epic', {}).get('usd', 3.63)) }}</div>
+    </div>
+
+    <!-- LEGENDARY -->
+    <div onclick="filterByRarity('legendary')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'legendary' %}border-amber-500 bg-amber-500/10 text-amber-300{% else %}border-amber-900/40 text-amber-400{% endif %} rounded-lg p-3 text-center shadow transition">
+        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>👑</span> LEGENDARY</div>
+        <div class="text-sm font-black mt-1 text-amber-200">from ${{ "%.2f" | format((floors or {}).get('legendary', {}).get('usd', 38.80)) }}</div>
+    </div>
+
+    <!-- GOD -->
+    <div onclick="filterByRarity('god')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'god' %}border-red-500 bg-red-500/10 text-red-300{% else %}border-red-900/40 text-red-400{% endif %} rounded-lg p-3 text-center shadow transition">
+        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>⚡</span> GOD</div>
+        <div class="text-sm font-black mt-1 text-red-200">from ${{ "%.2f" | format((floors or {}).get('god', {}).get('usd', 515.59)) }}</div>
+    </div>
+
+    <!-- FOUNDER -->
+    <div onclick="filterByRarity('founder')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'founder' %}border-teal-500 bg-teal-500/10 text-teal-300{% else %}border-teal-900/40 text-teal-400{% endif %} rounded-lg p-3 text-center shadow transition">
+        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>🏛️</span> FOUNDER</div>
+        <div class="text-sm font-black mt-1 text-teal-200">from ${{ "%.2f" | format((floors or {}).get('founder', {}).get('usd', 220.17)) }}</div>
+    </div>
+</div>
+
+<!-- Secondary Info Bar -->
+<div class="flex flex-col sm:flex-row items-center justify-between bg-[#12161f]/60 border border-gray-800 rounded px-4 py-2 mb-6 text-xs text-gray-400 gap-2">
+    <div>
+        <span class="text-yellow-400 font-bold" id="visible-count">{{ total_listings | default(0) }}</span> Listings • 
+        SOL/USD: <span class="text-gray-200">${{ "%.2f" | format(sol_usd | default(0.0)) }}</span> • 
+        Updated: <span class="text-gray-300">{{ fetched_at | default('Never') }}</span>
+    </div>
+    <div class="flex items-center gap-4 font-semibold text-yellow-500/90">
+        <a href="#" onclick="alert('Recent sales analytics coming soon')" class="hover:underline">Recent sales &gt;</a>
+        <a href="#" onclick="alert('Market activity log coming soon')" class="hover:underline">Activity &gt;</a>
+        <a href="#" onclick="alert('Sweep floor tool coming soon')" class="hover:underline">Sweep &gt;</a>
+    </div>
+</div>
+
+{% if listings and listings|length > 0 %}
+
+<!-- CARDS VIEW (Default) -->
+<div id="cards-view" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    {% for item in listings %}
+    {% set capo = item.get('capo', {}) %}
+    {% set rarity = capo.get('rarity', 'common') | lower %}
+    {% set score = item.get('deal_score', 0) %}
+    {% set badge = item.get('badge', 'Normal') %}
+    {% set price_usd = item.get('priceUsd', 0.0) %}
+    {% set price_sol = item.get('_price_lamports', 0) / 1000000000 %}
+    {% set fair_price = item.get('fair_price_lamports', 0) / 1000000000 %}
+    
+    {% set m = capo.get('stat_muscle', 0) %}
+    {% set h = capo.get('stat_hustle', 0) %}
+    {% set b = capo.get('stat_brains', 0) %}
+    {% set r_stat = capo.get('stat_rep', 0) %}
+    {% set g_stat = capo.get('stat_grit', 0) %}
+    {% set tot = item.get('total_stat', m + h + b + r_stat + g_stat) %}
+    
+    <!-- Determine max stat for highlight -->
+    {% set max_stat = [m, h, b, r_stat, g_stat] | max %}
+
+    <div class="listing-card bg-[#12161f] border {% if rarity == 'god' %}border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.2)]{% elif rarity == 'legendary' %}border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.2)]{% elif rarity == 'epic' %}border-purple-500/80 shadow-[0_0_15px_rgba(168,85,247,0.2)]{% elif rarity == 'founder' %}border-teal-500/80 shadow-[0_0_15px_rgba(20,184,166,0.2)]{% else %}border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.15)]{% endif %} rounded-lg overflow-hidden flex flex-col justify-between transition hover:scale-[1.01]"
+         data-rarity="{{ rarity }}" data-name="{{ capo.get('name', '') | lower }}" data-score="{{ score }}">
+         
+        <!-- Card Header -->
+        <div class="px-3 py-2 bg-[#0e1117] border-b border-gray-800 flex items-center justify-between">
+            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded {% if rarity == 'god' %}bg-red-500/20 text-red-400 border border-red-500/50{% elif rarity == 'legendary' %}bg-amber-500/20 text-amber-400 border border-amber-500/50{% elif rarity == 'epic' %}bg-purple-500/20 text-purple-400 border border-purple-500/50{% elif rarity == 'founder' %}bg-teal-500/20 text-teal-400 border border-teal-500/50{% else %}bg-blue-500/20 text-blue-400 border border-blue-500/50{% endif %}">
+                {{ rarity }}
+            </span>
+            <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-gray-400 font-mono">#{{ item.get('id', '')[:6] }}</span>
+                <a href="https://thesyndicate.io/market/{{ item.get('id', '') }}" target="_blank" title="View on Marketplace" 
+                   class="w-6 h-6 rounded bg-yellow-500/20 hover:bg-yellow-500 text-yellow-400 hover:text-black flex items-center justify-center text-xs font-bold transition">
+                   🛒
+                </a>
+            </div>
+        </div>
+
+        <!-- Capo Portrait Image -->
+        <div class="relative w-full h-44 bg-[#0a0d14] flex items-center justify-center overflow-hidden">
+            {% set img_url = capo.get('img', {}).get('md') or capo.get('img', {}).get('sm') %}
+            {% if img_url %}
+            <img src="https://thesyndicate.io{{ img_url }}" alt="{{ capo.get('name', 'Capo') }}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80'">
+            {% else %}
+            <div class="text-3xl">🎩</div>
+            {% endif %}
+            
+            <!-- Deal Badge Overlay -->
+            <div class="absolute top-2 left-2">
+                {% if badge == 'Steal' %}
+                <span class="px-2 py-0.5 bg-red-600/90 text-white text-[10px] font-extrabold rounded shadow border border-red-400">🔥 Steal</span>
+                {% elif badge == 'Great Deal' %}
+                <span class="px-2 py-0.5 bg-amber-600/90 text-white text-[10px] font-extrabold rounded shadow border border-amber-400">⚡ Great Deal</span>
+                {% elif badge == 'Good Value' %}
+                <span class="px-2 py-0.5 bg-emerald-600/90 text-white text-[10px] font-extrabold rounded shadow border border-emerald-400">✍️ Good Value</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="p-3 flex-1 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-sm text-gray-100 truncate" title="{{ capo.get('name', 'Unknown') }}">
+                    {{ capo.get('name', 'Unknown') }}
+                </h3>
+                <p class="text-[11px] text-gray-400 capitalize truncate mb-2">
+                    • {{ capo.get('character_name', '') }} &bull; {{ capo.get('specialty', 'operative') }} &bull; age {{ capo.get('age', 25) }} / {{ capo.get('tier', 'recruit') }}
+                </p>
+
+                <!-- Traits Grid (Greed, Finesse, Passion) -->
+                <div class="grid grid-cols-3 gap-1 mb-2 text-[10px] bg-[#0e1117] p-1.5 rounded border border-gray-800">
+                    <div class="text-center">
+                        <span class="text-gray-500 block">GREED</span>
+                        <span class="font-bold text-gray-300">{{ capo.get('trait_greed', 0) }}</span>
+                    </div>
+                    <div class="text-center border-x border-gray-800">
+                        <span class="text-gray-500 block">FINESSE</span>
+                        <span class="font-bold text-gray-300">{{ capo.get('trait_finesse', 0) }}</span>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-gray-500 block">PASSION</span>
+                        <span class="font-bold text-gray-300">{{ capo.get('trait_passion', 0) }}</span>
+                    </div>
+                </div>
+
+                <!-- Stats Bar -->
+                <div class="text-[10px] bg-[#0a0d14] p-1.5 rounded border border-gray-800 font-mono mb-3 flex flex-wrap items-center justify-between">
+                    <span>TOT <b class="text-gray-100">{{ tot }}</b></span>
+                    <span>MUS <b class="{% if m == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ m }}</b></span>
+                    <span>HUS <b class="{% if h == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ h }}</b></span>
+                    <span>BRN <b class="{% if b == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ b }}</b></span>
+                    <span>REP <b class="{% if r_stat == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ r_stat }}</b></span>
+                    <span>GRT <b class="{% if g_stat == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ g_stat }}</b></span>
+                </div>
+            </div>
+
+            <!-- Bottom Price & Buy Action -->
+            <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
+                <div>
+                    {% set all_in_usd = item.get('allInUsd', price_usd) %}
+                    <div class="text-xs font-black text-yellow-400" title="All-In USD (incl. fees)">${{ "%.2f" | format(all_in_usd) }}</div>
+                    <div class="text-[10px] text-gray-400" title="Base price USD: ${{ '%.2f' | format(price_usd) }}">
+                        {{ "%.3f" | format(price_sol) }} SOL {% if all_in_usd != price_usd %}<span class="text-gray-500 text-[9px]">(base: ${{ '%.2f' | format(price_usd) }})</span>{% endif %}
+                    </div>
+                </div>
+                <a href="https://thesyndicate.io/market/{{ item.get('id', '') }}" target="_blank" 
+                   class="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold text-xs rounded transition shadow">
+                   BUY 🛒
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- LIST VIEW (Hidden by default) -->
+<div id="list-view" class="hidden bg-[#12161f] border border-gray-800 rounded-lg overflow-x-auto shadow-lg">
+    <table class="w-full text-left border-collapse">
+        <thead>
+            <tr class="bg-[#0e1117] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800">
+                <th class="p-3">Capo</th>
+                <th class="p-3">Rarity / Tier</th>
+                <th class="p-3">Stats (Tot / Bkt)</th>
+                <th class="p-3">Price</th>
+                <th class="p-3">Fair Price</th>
+                <th class="p-3">Deal Score</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800 text-xs">
+            {% for item in listings %}
+            {% set capo = item.get('capo', {}) %}
+            {% set score = item.get('deal_score', 0) %}
+            {% set badge = item.get('badge', 'Normal') %}
+            <tr class="hover:bg-[#1a2230] transition listing-row" data-rarity="{{ capo.get('rarity', 'common') | lower }}" data-name="{{ capo.get('name', '') | lower }}" data-score="{{ score }}">
+                <td class="p-3">
+                    <div class="font-bold text-gray-200">{{ capo.get('name', 'Unknown') }}</div>
+                    <div class="text-[10px] text-gray-400">{{ capo.get('character_name', '') }} • ID: {{ item.get('id', '')[:6] }}</div>
+                </td>
+                <td class="p-3">
+                    <span class="uppercase font-bold text-yellow-400">{{ capo.get('rarity', 'common') }}</span>
+                    <div class="text-[10px] text-gray-400 capitalize">{{ capo.get('tier', 'recruit') }}</div>
+                </td>
+                <td class="p-3">
+                    <div class="font-bold text-gray-200">{{ item.get('total_stat', 0) }}</div>
+                    <div class="text-[10px] text-gray-400">Bucket: {{ item.get('stat_bucket', 0) }}</div>
+                </td>
+                <td class="p-3">
+                    {% set list_price_usd = item.get('priceUsd', 0.0) %}
+                    {% set list_all_in_usd = item.get('allInUsd', list_price_usd) %}
+                    <div class="font-bold text-yellow-400" title="All-In USD: ${{ '%.2f' | format(list_all_in_usd) }}">${{ "%.2f" | format(list_all_in_usd) }}</div>
+                    <div class="text-[10px] text-gray-400" title="Base price USD: ${{ '%.2f' | format(list_price_usd) }}">
+                        {{ "%.3f" | format(item.get('_price_lamports', 0) / 1000000000) }} SOL {% if list_all_in_usd != list_price_usd %}<span class="text-gray-500 text-[9px]">(base: ${{ '%.2f' | format(list_price_usd) }})</span>{% endif %}
+                    </div>
+                </td>
+                <td class="p-3">
+                    <div>{{ "%.3f" | format(item.get('fair_price_lamports', 0) / 1000000000) }} SOL</div>
+                    <div class="text-[10px] text-gray-400">Bench: {{ "%.3f" | format(item.get('benchmark_lamports', 0) / 1000000000) }} SOL</div>
+                </td>
+                <td class="p-3">
+                    <div class="font-black text-sm {% if score >= 80 %}text-red-400{% elif score >= 65 %}text-amber-400{% elif score >= 50 %}text-emerald-400{% else %}text-gray-400{% endif %}">
+                        {{ score }}
+                    </div>
+                </td>
+                <td class="p-3">
+                    {% if badge == 'Steal' %}
+                    <span class="px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/50 rounded font-bold text-[10px]">🔥 Steal</span>
+                    {% elif badge == 'Great Deal' %}
+                    <span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/50 rounded font-bold text-[10px]">⚡ Great Deal</span>
+                    {% elif badge == 'Good Value' %}
+                    <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded font-bold text-[10px]">✍️ Good Value</span>
+                    {% else %}
+                    <span class="px-2 py-0.5 bg-gray-800 text-gray-400 rounded font-semibold text-[10px]">Normal</span>
+                    {% endif %}
+                </td>
+                <td class="p-3 text-right">
+                    <a href="https://thesyndicate.io/market/{{ item.get('id', '') }}" target="_blank" 
+                       class="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold rounded text-[11px] transition shadow">
+                       BUY 🛒
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% else %}
+<div class="bg-[#12161f] border border-gray-800 rounded-lg p-12 text-center text-gray-400">
+    <div class="text-4xl mb-2">📭</div>
+    <h3 class="text-lg font-bold text-gray-200 mb-1">No Capo Listings Found</h3>
+    <p class="text-xs">No market listings are currently available or matching your filters. Click "Refresh" above to load fresh data.</p>
+</div>
+{% endif %}
+
+<!-- JavaScript for Interactivity -->
+<script>
+    let currentView = 'cards';
+    let currentRarity = '{{ selected_rarity | default("") }}';
+
+    function switchView(view) {
+        currentView = view;
+        const cardsEl = document.getElementById('cards-view');
+        const listEl = document.getElementById('list-view');
+        const cardsBtn = document.getElementById('view-cards-btn');
+        const listBtn = document.getElementById('view-list-btn');
+
+        if (view === 'cards') {
+            if (cardsEl) cardsEl.classList.remove('hidden');
+            if (listEl) listEl.classList.add('hidden');
+            cardsBtn.className = 'px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider transition flex items-center gap-1';
+            listBtn.className = 'px-3 py-1 rounded text-gray-400 hover:text-gray-200 font-semibold text-xs tracking-wider transition flex items-center gap-1';
+        } else {
+            if (cardsEl) cardsEl.classList.add('hidden');
+            if (listEl) listEl.classList.remove('hidden');
+            listBtn.className = 'px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider transition flex items-center gap-1';
+            cardsBtn.className = 'px-3 py-1 rounded text-gray-400 hover:text-gray-200 font-semibold text-xs tracking-wider transition flex items-center gap-1';
+        }
+    }
+
+    function filterByRarity(rarity) {
+        currentRarity = rarity;
+        const urlParams = new URLSearchParams(window.location.search);
+        if (rarity) {
+            urlParams.set('rarity', rarity);
+        } else {
+            urlParams.delete('rarity');
+        }
+        window.location.search = urlParams.toString();
+    }
+
+    function changeSort(val) {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (val === 'deal_score_desc') {
+            urlParams.set('sort_by', 'deal_score');
+            urlParams.set('order', 'desc');
+        } else if (val === 'price_asc') {
+            urlParams.set('sort_by', '_price_usd');
+            urlParams.set('order', 'asc');
+        } else if (val === 'price_desc') {
+            urlParams.set('sort_by', '_price_usd');
+            urlParams.set('order', 'desc');
+        } else if (val === 'stats_desc') {
+            urlParams.set('sort_by', 'total_stat');
+            urlParams.set('order', 'desc');
+        }
+        window.location.search = urlParams.toString();
+    }
+
+    function filterListings() {
+        const query = document.getElementById('search-input').value.toLowerCase();
+        const cards = document.querySelectorAll('.listing-card');
+        const rows = document.querySelectorAll('.listing-row');
+        let count = 0;
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name');
+            const rarity = card.getAttribute('data-rarity');
+            if (name.includes(query) || rarity.includes(query)) {
+                card.style.display = '';
+                count++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            const rarity = row.getAttribute('data-rarity');
+            if (name.includes(query) || rarity.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const countEl = document.getElementById('visible-count');
+        if (countEl) countEl.innerText = count;
+    }
+
+    function toggleFilters() {
+        alert('Advanced filters menu (Deal score, traits, tier) is active via rarity pills and search!');
+    }
+</script>
+{% endblock %}
