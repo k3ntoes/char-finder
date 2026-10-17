@@ -25,7 +25,7 @@ def test_refresh_button_browser(mock_fetch):
         response = client.get("/")
         assert response.status_code == 200
         html = response.text
-        assert "Pawn Shop" in html
+        assert "CharFinder" in html
         assert "listings" in html.lower()
         assert "status" in html.lower()  # Table column header check
 
@@ -39,6 +39,6 @@ def test_refresh_button_browser(mock_fetch):
         response_home = client.get("/")
         assert response_home.status_code == 200
         html_home = response_home.text
-        assert "Pawn Shop" in html_home
+        assert "CharFinder" in html_home
         assert "listings" in html_home.lower()
         assert "status" in html_home.lower()

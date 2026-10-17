@@ -1,398 +1,674 @@
 {% extends "base.html" %}
 
-{% block title %}Pawn Shop - Market Dashboard{% endblock %}
+{% block title %}CharFinder - The Syndicate Screener{% endblock %}
 
 {% block content %}
-<!-- Subnav & Search Bar -->
-<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-6 bg-[#12161f] border border-yellow-600/30 p-4 rounded-lg shadow-lg">
-    
-    <!-- Subtabs [ CAPOS ] [ GEAR ] & Search -->
-    <div class="flex flex-wrap items-center gap-4">
-        <div class="flex items-center bg-[#0e1117] border border-yellow-600/40 rounded p-1">
-            <button id="subtab-capos" class="px-4 py-1.5 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider uppercase shadow">
-                [ CAPOS ]
-            </button>
-            <button id="subtab-gear" onclick="alert('Gear marketplace coming soon!')" class="px-4 py-1.5 rounded text-gray-400 hover:text-yellow-300 font-semibold text-xs tracking-wider uppercase transition">
-                [ GEAR ]
-            </button>
-        </div>
+<div class="space-y-6">
 
-        <!-- Search Input -->
-        <div class="relative flex-1 min-w-[220px]">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
-            <input type="text" id="search-input" placeholder="Search capos by name, rarity, specialty..." 
-                class="w-full bg-[#0e1117] border border-gray-700 rounded pl-9 pr-4 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-yellow-500 transition"
-                onkeyup="filterListings()">
-        </div>
-    </div>
-
-    <!-- Right Controls: FILTERS, WATCH, SORT, View Toggle CARDS / LIST -->
-    <div class="flex flex-wrap items-center gap-3">
-        <button onclick="toggleFilters()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-semibold flex items-center gap-1 transition">
-            <span>🎛️ FILTERS</span>
-        </button>
-        <button onclick="alert('Watchlist feature enabled in background')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded text-xs font-semibold flex items-center gap-1 transition">
-            <span>👁️ WATCH</span>
-        </button>
+    <!-- Tier 1 Quick Screener Bar -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
         
-        <!-- Sort Dropdown -->
-        <select id="sort-select" onchange="changeSort(this.value)" class="bg-[#0e1117] border border-gray-700 text-gray-300 rounded px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-yellow-500">
-            <option value="deal_score_desc" {% if sort_by == 'deal_score' and order == 'desc' %}selected{% endif %}>Sort: Best Deal Score</option>
-            <option value="price_asc" {% if sort_by == '_price_usd' and order == 'asc' %}selected{% endif %}>Sort: Price (Low to High)</option>
-            <option value="price_desc" {% if sort_by == '_price_usd' and order == 'desc' %}selected{% endif %}>Sort: Price (High to Low)</option>
-            <option value="stats_desc" {% if sort_by == 'total_stat' and order == 'desc' %}selected{% endif %}>Sort: Highest Total Stats</option>
-        </select>
-
-        <!-- View Toggle CARDS / LIST -->
-        <div class="flex items-center bg-[#0e1117] border border-yellow-600/40 rounded p-0.5">
-            <button id="view-cards-btn" onclick="switchView('cards')" class="px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider transition flex items-center gap-1">
-                <span>[:: CARDS ]</span>
-            </button>
-            <button id="view-list-btn" onclick="switchView('list')" class="px-3 py-1 rounded text-gray-400 hover:text-gray-200 font-semibold text-xs tracking-wider transition flex items-center gap-1">
-                <span>[= LIST ]</span>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Rarity Filter Boxes Bar -->
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-    <!-- All Rarities -->
-    <div onclick="filterByRarity('')" class="rarity-pill bg-[#12161f] border {% if not selected_rarity %}border-yellow-500 bg-yellow-500/10 text-yellow-400{% else %}border-gray-800 text-gray-400{% endif %} rounded-lg p-3 text-center shadow transition">
-        <div class="text-xs uppercase font-bold tracking-wider">ALL CAPOS</div>
-        <div class="text-sm font-black mt-1 text-gray-200">{{ total_listings | default(0) }} listings</div>
-    </div>
-
-    <!-- RARE -->
-    <div onclick="filterByRarity('rare')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'rare' %}border-blue-500 bg-blue-500/10 text-blue-300{% else %}border-blue-900/40 text-blue-400{% endif %} rounded-lg p-3 text-center shadow transition">
-        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>💎</span> RARE</div>
-        <div class="text-sm font-black mt-1 text-blue-200">from ${{ "%.2f" | format((floors or {}).get('rare', {}).get('usd', 0.76)) }}</div>
-    </div>
-
-    <!-- EPIC -->
-    <div onclick="filterByRarity('epic')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'epic' %}border-purple-500 bg-purple-500/10 text-purple-300{% else %}border-purple-900/40 text-purple-400{% endif %} rounded-lg p-3 text-center shadow transition">
-        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>🔮</span> EPIC</div>
-        <div class="text-sm font-black mt-1 text-purple-200">from ${{ "%.2f" | format((floors or {}).get('epic', {}).get('usd', 3.63)) }}</div>
-    </div>
-
-    <!-- LEGENDARY -->
-    <div onclick="filterByRarity('legendary')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'legendary' %}border-amber-500 bg-amber-500/10 text-amber-300{% else %}border-amber-900/40 text-amber-400{% endif %} rounded-lg p-3 text-center shadow transition">
-        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>👑</span> LEGENDARY</div>
-        <div class="text-sm font-black mt-1 text-amber-200">from ${{ "%.2f" | format((floors or {}).get('legendary', {}).get('usd', 38.80)) }}</div>
-    </div>
-
-    <!-- GOD -->
-    <div onclick="filterByRarity('god')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'god' %}border-red-500 bg-red-500/10 text-red-300{% else %}border-red-900/40 text-red-400{% endif %} rounded-lg p-3 text-center shadow transition">
-        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>⚡</span> GOD</div>
-        <div class="text-sm font-black mt-1 text-red-200">from ${{ "%.2f" | format((floors or {}).get('god', {}).get('usd', 515.59)) }}</div>
-    </div>
-
-    <!-- FOUNDER -->
-    <div onclick="filterByRarity('founder')" class="rarity-pill bg-[#12161f] border {% if selected_rarity == 'founder' %}border-teal-500 bg-teal-500/10 text-teal-300{% else %}border-teal-900/40 text-teal-400{% endif %} rounded-lg p-3 text-center shadow transition">
-        <div class="text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-1"><span>🏛️</span> FOUNDER</div>
-        <div class="text-sm font-black mt-1 text-teal-200">from ${{ "%.2f" | format((floors or {}).get('founder', {}).get('usd', 220.17)) }}</div>
-    </div>
-</div>
-
-<!-- Secondary Info Bar -->
-<div class="flex flex-col sm:flex-row items-center justify-between bg-[#12161f]/60 border border-gray-800 rounded px-4 py-2 mb-6 text-xs text-gray-400 gap-2">
-    <div>
-        <span class="text-yellow-400 font-bold" id="visible-count">{{ total_listings | default(0) }}</span> Listings • 
-        SOL/USD: <span class="text-gray-200">${{ "%.2f" | format(sol_usd | default(0.0)) }}</span> • 
-        Updated: <span class="text-gray-300">{{ fetched_at | default('Never') }}</span>
-    </div>
-    <div class="flex items-center gap-4 font-semibold text-yellow-500/90">
-        <a href="#" onclick="alert('Recent sales analytics coming soon')" class="hover:underline">Recent sales &gt;</a>
-        <a href="#" onclick="alert('Market activity log coming soon')" class="hover:underline">Activity &gt;</a>
-        <a href="#" onclick="alert('Sweep floor tool coming soon')" class="hover:underline">Sweep &gt;</a>
-    </div>
-</div>
-
-{% if listings and listings|length > 0 %}
-
-<!-- CARDS VIEW (Default) -->
-<div id="cards-view" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-    {% for item in listings %}
-    {% set capo = item.get('capo', {}) %}
-    {% set rarity = capo.get('rarity', 'common') | lower %}
-    {% set score = item.get('deal_score', 0) %}
-    {% set badge = item.get('badge', 'Normal') %}
-    {% set price_usd = item.get('priceUsd', 0.0) %}
-    {% set price_sol = item.get('_price_lamports', 0) / 1000000000 %}
-    {% set fair_price = item.get('fair_price_lamports', 0) / 1000000000 %}
-    
-    {% set m = capo.get('stat_muscle', 0) %}
-    {% set h = capo.get('stat_hustle', 0) %}
-    {% set b = capo.get('stat_brains', 0) %}
-    {% set r_stat = capo.get('stat_rep', 0) %}
-    {% set g_stat = capo.get('stat_grit', 0) %}
-    {% set tot = item.get('total_stat', m + h + b + r_stat + g_stat) %}
-    
-    <!-- Determine max stat for highlight -->
-    {% set max_stat = [m, h, b, r_stat, g_stat] | max %}
-
-    <div class="listing-card bg-[#12161f] border {% if rarity == 'god' %}border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.2)]{% elif rarity == 'legendary' %}border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.2)]{% elif rarity == 'epic' %}border-purple-500/80 shadow-[0_0_15px_rgba(168,85,247,0.2)]{% elif rarity == 'founder' %}border-teal-500/80 shadow-[0_0_15px_rgba(20,184,166,0.2)]{% else %}border-blue-500/60 shadow-[0_0_10px_rgba(59,130,246,0.15)]{% endif %} rounded-lg overflow-hidden flex flex-col justify-between transition hover:scale-[1.01]"
-         data-rarity="{{ rarity }}" data-name="{{ capo.get('name', '') | lower }}" data-score="{{ score }}">
-         
-        <!-- Card Header -->
-        <div class="px-3 py-2 bg-[#0e1117] border-b border-gray-800 flex items-center justify-between">
-            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded {% if rarity == 'god' %}bg-red-500/20 text-red-400 border border-red-500/50{% elif rarity == 'legendary' %}bg-amber-500/20 text-amber-400 border border-amber-500/50{% elif rarity == 'epic' %}bg-purple-500/20 text-purple-400 border border-purple-500/50{% elif rarity == 'founder' %}bg-teal-500/20 text-teal-400 border border-teal-500/50{% else %}bg-blue-500/20 text-blue-400 border border-blue-500/50{% endif %}">
-                {{ rarity }}
-            </span>
-            <div class="flex items-center gap-1.5">
-                <span class="text-[10px] text-gray-400 font-mono">#{{ item.get('id', '')[:6] }}</span>
-                <a href="https://thesyndicate.io/market/{{ item.get('id', '') }}" target="_blank" title="View on Marketplace" 
-                   class="w-6 h-6 rounded bg-yellow-500/20 hover:bg-yellow-500 text-yellow-400 hover:text-black flex items-center justify-center text-xs font-bold transition">
-                   🛒
-                </a>
-            </div>
-        </div>
-
-        <!-- Capo Portrait Image -->
-        <div class="relative w-full h-44 bg-[#0a0d14] flex items-center justify-center overflow-hidden">
-            {% set img_url = capo.get('img', {}).get('md') or capo.get('img', {}).get('sm') %}
-            {% if img_url %}
-            <img src="https://thesyndicate.io{{ img_url }}" alt="{{ capo.get('name', 'Capo') }}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80'">
-            {% else %}
-            <div class="text-3xl">🎩</div>
-            {% endif %}
+        <!-- Row 1: Deal-Tier Pills with live counters & Rarity pills -->
+        <div class="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
             
-            <!-- Deal Badge Overlay -->
-            <div class="absolute top-2 left-2">
-                {% if badge == 'Steal' %}
-                <span class="px-2 py-0.5 bg-red-600/90 text-white text-[10px] font-extrabold rounded shadow border border-red-400">🔥 Steal</span>
-                {% elif badge == 'Great Deal' %}
-                <span class="px-2 py-0.5 bg-amber-600/90 text-white text-[10px] font-extrabold rounded shadow border border-amber-400">⚡ Great Deal</span>
-                {% elif badge == 'Good Value' %}
-                <span class="px-2 py-0.5 bg-emerald-600/90 text-white text-[10px] font-extrabold rounded shadow border border-emerald-400">✍️ Good Value</span>
-                {% endif %}
+            <!-- Deal Tier Pills -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="setDealTier('')" id="tier-pill-all" class="deal-tier-btn px-3 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-xs tracking-wide transition flex items-center gap-1.5 shadow">
+                    <span>All Recommended</span>
+                    <span id="count-all" class="px-1.5 py-0.5 rounded-full bg-indigo-900 text-indigo-200 text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="setDealTier('steals')" id="tier-pill-steals" class="deal-tier-btn px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs tracking-wide transition flex items-center gap-1.5 border border-slate-700">
+                    <span>🔥 Steals</span>
+                    <span id="count-steals" class="px-1.5 py-0.5 rounded-full bg-slate-900 text-slate-400 text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="setDealTier('great')" id="tier-pill-great" class="deal-tier-btn px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs tracking-wide transition flex items-center gap-1.5 border border-slate-700">
+                    <span>⚡ Great Deals</span>
+                    <span id="count-great" class="px-1.5 py-0.5 rounded-full bg-slate-900 text-slate-400 text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="setDealTier('good')" id="tier-pill-good" class="deal-tier-btn px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs tracking-wide transition flex items-center gap-1.5 border border-slate-700">
+                    <span>✍️ Good Value</span>
+                    <span id="count-good" class="px-1.5 py-0.5 rounded-full bg-slate-900 text-slate-400 text-[10px] font-mono">0</span>
+                </button>
+            </div>
+
+            <!-- Rarity Pills -->
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="setRarity('')" id="rarity-pill-" class="rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition">All</button>
+                <button onclick="setRarity('rare')" id="rarity-pill-rare" class="rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-medium border border-slate-700 transition">Rare</button>
+                <button onclick="setRarity('epic')" id="rarity-pill-epic" class="rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-400 text-xs font-medium border border-slate-700 transition">Epic</button>
+                <button onclick="setRarity('legendary')" id="rarity-pill-legendary" class="rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-medium border border-slate-700 transition">Legendary</button>
+                <button onclick="setRarity('founder')" id="rarity-pill-founder" class="rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-teal-400 text-xs font-medium border border-slate-700 transition">Founder</button>
+                <button onclick="setRarity('god')" id="rarity-pill-god" class="rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-red-400 text-xs font-medium border border-slate-700 transition">God</button>
+            </div>
+
+        </div>
+
+        <!-- Row 2: Search Input, Price Range, Advanced Drawer Toggle, Sort Selector -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-slate-800 items-center">
+            
+            <!-- Instant Text Search -->
+            <div class="md:col-span-4 relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-xs">🔍</span>
+                <input type="text" id="search-input" placeholder="Search capo name, specialty..." 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono transition"
+                    oninput="debounceApplyFilters()">
+            </div>
+
+            <!-- Price Range (Min & Max Lamports / USD) -->
+            <div class="md:col-span-3 flex items-center gap-2">
+                <input type="number" id="price-min" placeholder="Min Lamports" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    oninput="debounceApplyFilters()">
+                <span class="text-slate-600">-</span>
+                <input type="number" id="price-max" placeholder="Max Lamports" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    oninput="debounceApplyFilters()">
+            </div>
+
+            <!-- Sort Selector -->
+            <div class="md:col-span-3">
+                <select id="sort-select" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+                    <option value="deal_score_desc">Sort: Deal Score (High → Low)</option>
+                    <option value="price_asc">Sort: Price Lamports (Low → High)</option>
+                    <option value="price_desc">Sort: Price Lamports (High → Low)</option>
+                    <option value="total_desc">Sort: Total Stat (High → Low)</option>
+                    <option value="muscle_desc">Sort: Muscle (High → Low)</option>
+                    <option value="brains_desc">Sort: Brains (High → Low)</option>
+                    <option value="hustle_desc">Sort: Hustle (High → Low)</option>
+                    <option value="grit_desc">Sort: Grit (High → Low)</option>
+                    <option value="rep_desc">Sort: Rep (High → Low)</option>
+                    <option value="listed_desc">Sort: Listed At (Newest)</option>
+                </select>
+            </div>
+
+            <!-- Advanced Drawer Toggle -->
+            <div class="md:col-span-2 flex justify-end">
+                <button onclick="toggleAdvancedDrawer()" id="drawer-toggle-btn" class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                    <span>⚡ Filters & Stats</span>
+                    <span id="drawer-chevron">▼</span>
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Tier 2 Collapsible Advanced Drawer -->
+    <div id="advanced-drawer" class="hidden bg-slate-900 border border-indigo-500/30 rounded-xl p-5 shadow-2xl space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-xs uppercase tracking-wider font-bold text-indigo-400 flex items-center gap-2">
+                <span>⚡</span> Advanced Combat Stats & Traits Filter
+            </h3>
+            <button onclick="resetAllFilters()" class="text-xs text-slate-400 hover:text-slate-100 underline transition">
+                Reset All Filters
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <!-- Muscle -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-mono text-slate-400">
+                    <span>Muscle (1-100)</span>
+                    <span id="val-muscle" class="text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-muscle" min="0" max="100" value="0" class="w-full accent-indigo-500 bg-slate-950" oninput="updateRangeVal('muscle'); debounceApplyFilters()">
+            </div>
+            <!-- Brains -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-mono text-slate-400">
+                    <span>Brains (1-100)</span>
+                    <span id="val-brains" class="text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-brains" min="0" max="100" value="0" class="w-full accent-indigo-500 bg-slate-950" oninput="updateRangeVal('brains'); debounceApplyFilters()">
+            </div>
+            <!-- Hustle -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-mono text-slate-400">
+                    <span>Hustle (1-100)</span>
+                    <span id="val-hustle" class="text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-hustle" min="0" max="100" value="0" class="w-full accent-indigo-500 bg-slate-950" oninput="updateRangeVal('hustle'); debounceApplyFilters()">
+            </div>
+            <!-- Grit -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-mono text-slate-400">
+                    <span>Grit (1-100)</span>
+                    <span id="val-grit" class="text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-grit" min="0" max="100" value="0" class="w-full accent-indigo-500 bg-slate-950" oninput="updateRangeVal('grit'); debounceApplyFilters()">
+            </div>
+            <!-- Rep -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-mono text-slate-400">
+                    <span>Rep (1-100)</span>
+                    <span id="val-rep" class="text-indigo-400 font-bold">0</span>
+                </div>
+                <input type="range" id="filter-rep" min="0" max="100" value="0" class="w-full accent-indigo-500 bg-slate-950" oninput="updateRangeVal('rep'); debounceApplyFilters()">
             </div>
         </div>
 
-        <!-- Card Body -->
-        <div class="p-3 flex-1 flex flex-col justify-between">
-            <div>
-                <h3 class="font-bold text-sm text-gray-100 truncate" title="{{ capo.get('name', 'Unknown') }}">
-                    {{ capo.get('name', 'Unknown') }}
-                </h3>
-                <p class="text-[11px] text-gray-400 capitalize truncate mb-2">
-                    • {{ capo.get('character_name', '') }} &bull; {{ capo.get('specialty', 'operative') }} &bull; age {{ capo.get('age', 25) }} / {{ capo.get('tier', 'recruit') }}
-                </p>
-
-                <!-- Traits Grid (Greed, Finesse, Passion) -->
-                <div class="grid grid-cols-3 gap-1 mb-2 text-[10px] bg-[#0e1117] p-1.5 rounded border border-gray-800">
-                    <div class="text-center">
-                        <span class="text-gray-500 block">GREED</span>
-                        <span class="font-bold text-gray-300">{{ capo.get('trait_greed', 0) }}</span>
-                    </div>
-                    <div class="text-center border-x border-gray-800">
-                        <span class="text-gray-500 block">FINESSE</span>
-                        <span class="font-bold text-gray-300">{{ capo.get('trait_finesse', 0) }}</span>
-                    </div>
-                    <div class="text-center">
-                        <span class="text-gray-500 block">PASSION</span>
-                        <span class="font-bold text-gray-300">{{ capo.get('trait_passion', 0) }}</span>
-                    </div>
-                </div>
-
-                <!-- Stats Bar -->
-                <div class="text-[10px] bg-[#0a0d14] p-1.5 rounded border border-gray-800 font-mono mb-3 flex flex-wrap items-center justify-between">
-                    <span>TOT <b class="text-gray-100">{{ tot }}</b></span>
-                    <span>MUS <b class="{% if m == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ m }}</b></span>
-                    <span>HUS <b class="{% if h == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ h }}</b></span>
-                    <span>BRN <b class="{% if b == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ b }}</b></span>
-                    <span>REP <b class="{% if r_stat == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ r_stat }}</b></span>
-                    <span>GRT <b class="{% if g_stat == max_stat %}text-amber-400 font-bold{% else %}text-gray-300{% endif %}">{{ g_stat }}</b></span>
-                </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-3 border-t border-slate-800">
+            <!-- Min Total Stat -->
+            <div class="space-y-1">
+                <label class="block text-xs font-mono text-slate-400">Min Total Stat (16-500)</label>
+                <input type="number" id="filter-total-stat" min="0" max="500" value="0" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                    oninput="debounceApplyFilters()">
             </div>
+            <!-- Greed -->
+            <div class="space-y-1">
+                <label class="block text-xs font-mono text-slate-400">Min Greed (1-10)</label>
+                <input type="number" id="filter-greed" min="0" max="10" value="0" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                    oninput="debounceApplyFilters()">
+            </div>
+            <!-- Finesse -->
+            <div class="space-y-1">
+                <label class="block text-xs font-mono text-slate-400">Min Finesse (1-10)</label>
+                <input type="number" id="filter-finesse" min="0" max="10" value="0" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                    oninput="debounceApplyFilters()">
+            </div>
+            <!-- Passion -->
+            <div class="space-y-1">
+                <label class="block text-xs font-mono text-slate-400">Min Passion (1-10)</label>
+                <input type="number" id="filter-passion" min="0" max="10" value="0" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                    oninput="debounceApplyFilters()">
+            </div>
+        </div>
 
-            <!-- Bottom Price & Buy Action -->
-            <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
-                <div>
-                    {% set all_in_usd = item.get('allInUsd', price_usd) %}
-                    <div class="text-xs font-black text-yellow-400" title="All-In USD (incl. fees)">${{ "%.2f" | format(all_in_usd) }}</div>
-                    <div class="text-[10px] text-gray-400" title="Base price USD: ${{ '%.2f' | format(price_usd) }}">
-                        {{ "%.3f" | format(price_sol) }} SOL {% if all_in_usd != price_usd %}<span class="text-gray-500 text-[9px]">(base: ${{ '%.2f' | format(price_usd) }})</span>{% endif %}
-                    </div>
-                </div>
-                <a href="https://thesyndicate.io/market/{{ item.get('id', '') }}" target="_blank" 
-                   class="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold text-xs rounded transition shadow">
-                   BUY 🛒
-                </a>
+        <!-- Specialty Multi-select -->
+        <div class="pt-3 border-t border-slate-800 space-y-2">
+            <label class="block text-xs font-mono text-slate-400">Official Specializations</label>
+            <div class="flex flex-wrap gap-2" id="specialty-checkboxes">
+                <label class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded border border-slate-800 text-xs cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" value="enforcer" class="specialty-cb accent-indigo-500" onchange="applyFilters()"> Enforcer
+                </label>
+                <label class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded border border-slate-800 text-xs cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" value="hustler" class="specialty-cb accent-indigo-500" onchange="applyFilters()"> Hustler
+                </label>
+                <label class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded border border-slate-800 text-xs cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" value="fixer" class="specialty-cb accent-indigo-500" onchange="applyFilters()"> Fixer
+                </label>
+                <label class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded border border-slate-800 text-xs cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" value="survivor" class="specialty-cb accent-indigo-500" onchange="applyFilters()"> Survivor
+                </label>
+                <label class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded border border-slate-800 text-xs cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" value="negotiator" class="specialty-cb accent-indigo-500" onchange="applyFilters()"> Negotiator
+                </label>
             </div>
         </div>
     </div>
-    {% endfor %}
+
+    <!-- Screener Results Meta Bar -->
+    <div class="flex items-center justify-between px-2 text-xs text-slate-400 font-mono">
+        <div>Showing <strong id="result-count" class="text-slate-100">0</strong> matching capos</div>
+        <div id="active-filters-summary" class="hidden text-indigo-400">Filters active</div>
+    </div>
+
+    <!-- High-Density Data Screener Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="screener-table">
+                <thead>
+                    <tr class="bg-slate-950/80 border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider">
+                        <th class="py-3 px-4 cursor-pointer hover:text-slate-200" onclick="sortByHeader('deal_score')">DEAL ↕</th>
+                        <th class="py-3 px-4 cursor-pointer hover:text-slate-200" onclick="sortByHeader('name')">CAPO / ROLE ↕</th>
+                        <th class="py-3 px-4 cursor-pointer hover:text-slate-200" onclick="sortByHeader('rarity')">RARITY ↕</th>
+                        <th class="py-3 px-4 text-right cursor-pointer hover:text-slate-200" onclick="sortByHeader('price')">PRICE ↕</th>
+                        <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('muscle')">MUS ↕</th>
+                        <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('brains')">BRA ↕</th>
+                        <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('hustle')">HUS ↕</th>
+                        <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('grit')">GRI ↕</th>
+                        <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('rep')">REP ↕</th>
+                        <th class="py-3 px-4 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('total_stat')">TOTAL ↕</th>
+                        <th class="py-3 px-4">TRAITS</th>
+                        <th class="py-3 px-4 text-center">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="listings-tbody" class="divide-y divide-slate-800 text-xs font-mono">
+                    <!-- Populated dynamically via Vanilla JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden py-16 text-center space-y-3">
+            <div class="text-3xl">🕵️‍♂️</div>
+            <div class="text-sm font-bold text-slate-300">No capos match your exact filter criteria</div>
+            <p class="text-xs text-slate-500 max-w-md mx-auto">Try loosening your combat stat sliders, clearing price limits, or resetting filters to view available listings.</p>
+            <div>
+                <button onclick="resetAllFilters()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition">
+                    Reset All Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<!-- LIST VIEW (Hidden by default) -->
-<div id="list-view" class="hidden bg-[#12161f] border border-gray-800 rounded-lg overflow-x-auto shadow-lg">
-    <table class="w-full text-left border-collapse">
-        <thead>
-            <tr class="bg-[#0e1117] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800">
-                <th class="p-3">Capo</th>
-                <th class="p-3">Rarity / Tier</th>
-                <th class="p-3">Stats (Tot / Bkt)</th>
-                <th class="p-3">Price</th>
-                <th class="p-3">Fair Price</th>
-                <th class="p-3">Deal Score</th>
-                <th class="p-3">Status</th>
-                <th class="p-3 text-right">Action</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-800 text-xs">
-            {% for item in listings %}
-            {% set capo = item.get('capo', {}) %}
-            {% set score = item.get('deal_score', 0) %}
-            {% set badge = item.get('badge', 'Normal') %}
-            <tr class="hover:bg-[#1a2230] transition listing-row" data-rarity="{{ capo.get('rarity', 'common') | lower }}" data-name="{{ capo.get('name', '') | lower }}" data-score="{{ score }}">
-                <td class="p-3">
-                    <div class="font-bold text-gray-200">{{ capo.get('name', 'Unknown') }}</div>
-                    <div class="text-[10px] text-gray-400">{{ capo.get('character_name', '') }} • ID: {{ item.get('id', '')[:6] }}</div>
-                </td>
-                <td class="p-3">
-                    <span class="uppercase font-bold text-yellow-400">{{ capo.get('rarity', 'common') }}</span>
-                    <div class="text-[10px] text-gray-400 capitalize">{{ capo.get('tier', 'recruit') }}</div>
-                </td>
-                <td class="p-3">
-                    <div class="font-bold text-gray-200">{{ item.get('total_stat', 0) }}</div>
-                    <div class="text-[10px] text-gray-400">Bucket: {{ item.get('stat_bucket', 0) }}</div>
-                </td>
-                <td class="p-3">
-                    {% set list_price_usd = item.get('priceUsd', 0.0) %}
-                    {% set list_all_in_usd = item.get('allInUsd', list_price_usd) %}
-                    <div class="font-bold text-yellow-400" title="All-In USD: ${{ '%.2f' | format(list_all_in_usd) }}">${{ "%.2f" | format(list_all_in_usd) }}</div>
-                    <div class="text-[10px] text-gray-400" title="Base price USD: ${{ '%.2f' | format(list_price_usd) }}">
-                        {{ "%.3f" | format(item.get('_price_lamports', 0) / 1000000000) }} SOL {% if list_all_in_usd != list_price_usd %}<span class="text-gray-500 text-[9px]">(base: ${{ '%.2f' | format(list_price_usd) }})</span>{% endif %}
-                    </div>
-                </td>
-                <td class="p-3">
-                    <div>{{ "%.3f" | format(item.get('fair_price_lamports', 0) / 1000000000) }} SOL</div>
-                    <div class="text-[10px] text-gray-400">Bench: {{ "%.3f" | format(item.get('benchmark_lamports', 0) / 1000000000) }} SOL</div>
-                </td>
-                <td class="p-3">
-                    <div class="font-black text-sm {% if score >= 80 %}text-red-400{% elif score >= 65 %}text-amber-400{% elif score >= 50 %}text-emerald-400{% else %}text-gray-400{% endif %}">
-                        {{ score }}
-                    </div>
-                </td>
-                <td class="p-3">
-                    {% if badge == 'Steal' %}
-                    <span class="px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/50 rounded font-bold text-[10px]">🔥 Steal</span>
-                    {% elif badge == 'Great Deal' %}
-                    <span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/50 rounded font-bold text-[10px]">⚡ Great Deal</span>
-                    {% elif badge == 'Good Value' %}
-                    <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded font-bold text-[10px]">✍️ Good Value</span>
-                    {% else %}
-                    <span class="px-2 py-0.5 bg-gray-800 text-gray-400 rounded font-semibold text-[10px]">Normal</span>
-                    {% endif %}
-                </td>
-                <td class="p-3 text-right">
-                    <a href="https://thesyndicate.io/market/{{ item.get('id', '') }}" target="_blank" 
-                       class="px-3 py-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold rounded text-[11px] transition shadow">
-                       BUY 🛒
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<!-- Client-Side Reactive Engine Data Store -->
+<script id="deals-data" type="application/json">{{ listings | tojson | safe }}</script>
 
-{% else %}
-<div class="bg-[#12161f] border border-gray-800 rounded-lg p-12 text-center text-gray-400">
-    <div class="text-4xl mb-2">📭</div>
-    <h3 class="text-lg font-bold text-gray-200 mb-1">No Capo Listings Found</h3>
-    <p class="text-xs">No market listings are currently available or matching your filters. Click "Refresh" above to load fresh data.</p>
-</div>
-{% endif %}
-
-<!-- JavaScript for Interactivity -->
 <script>
-    let currentView = 'cards';
-    let currentRarity = '{{ selected_rarity | default("") }}';
-
-    function switchView(view) {
-        currentView = view;
-        const cardsEl = document.getElementById('cards-view');
-        const listEl = document.getElementById('list-view');
-        const cardsBtn = document.getElementById('view-cards-btn');
-        const listBtn = document.getElementById('view-list-btn');
-
-        if (view === 'cards') {
-            if (cardsEl) cardsEl.classList.remove('hidden');
-            if (listEl) listEl.classList.add('hidden');
-            cardsBtn.className = 'px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider transition flex items-center gap-1';
-            listBtn.className = 'px-3 py-1 rounded text-gray-400 hover:text-gray-200 font-semibold text-xs tracking-wider transition flex items-center gap-1';
-        } else {
-            if (cardsEl) cardsEl.classList.add('hidden');
-            if (listEl) listEl.classList.remove('hidden');
-            listBtn.className = 'px-3 py-1 rounded bg-yellow-500/20 text-yellow-400 font-bold text-xs tracking-wider transition flex items-center gap-1';
-            cardsBtn.className = 'px-3 py-1 rounded text-gray-400 hover:text-gray-200 font-semibold text-xs tracking-wider transition flex items-center gap-1';
-        }
+    // Parse listings data safely
+    let allListings = [];
+    try {
+        const rawJson = document.getElementById('deals-data').textContent;
+        allListings = JSON.parse(rawJson);
+    } catch (e) {
+        console.error("Failed to parse listings data:", e);
+        allListings = [];
     }
 
-    function filterByRarity(rarity) {
-        currentRarity = rarity;
-        const urlParams = new URLSearchParams(window.location.search);
-        if (rarity) {
-            urlParams.set('rarity', rarity);
-        } else {
-            urlParams.delete('rarity');
-        }
-        window.location.search = urlParams.toString();
+    // Active state
+    let state = {
+        tier: '',
+        rarity: '',
+        search: '',
+        priceMin: null,
+        priceMax: null,
+        muscle: 0,
+        brains: 0,
+        hustle: 0,
+        grit: 0,
+        rep: 0,
+        totalStat: 0,
+        greed: 0,
+        finesse: 0,
+        passion: 0,
+        specialties: [],
+        sortBy: 'deal_score',
+        sortOrder: 'desc'
+    };
+
+    let debounceTimer = null;
+
+    function debounceApplyFilters() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            applyFilters();
+        }, 150);
     }
 
-    function changeSort(val) {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (val === 'deal_score_desc') {
-            urlParams.set('sort_by', 'deal_score');
-            urlParams.set('order', 'desc');
-        } else if (val === 'price_asc') {
-            urlParams.set('sort_by', '_price_usd');
-            urlParams.set('order', 'asc');
-        } else if (val === 'price_desc') {
-            urlParams.set('sort_by', '_price_usd');
-            urlParams.set('order', 'desc');
-        } else if (val === 'stats_desc') {
-            urlParams.set('sort_by', 'total_stat');
-            urlParams.set('order', 'desc');
-        }
-        window.location.search = urlParams.toString();
+    function toggleAdvancedDrawer() {
+        const drawer = document.getElementById('advanced-drawer');
+        const chevron = document.getElementById('drawer-chevron');
+        drawer.classList.toggle('hidden');
+        chevron.textContent = drawer.classList.contains('hidden') ? '▼' : '▲';
     }
 
-    function filterListings() {
-        const query = document.getElementById('search-input').value.toLowerCase();
-        const cards = document.querySelectorAll('.listing-card');
-        const rows = document.querySelectorAll('.listing-row');
-        let count = 0;
+    function updateRangeVal(stat) {
+        const val = document.getElementById(`filter-${stat}`).value;
+        document.getElementById(`val-${stat}`).textContent = val;
+    }
 
-        cards.forEach(card => {
-            const name = card.getAttribute('data-name');
-            const rarity = card.getAttribute('data-rarity');
-            if (name.includes(query) || rarity.includes(query)) {
-                card.style.display = '';
-                count++;
-            } else {
-                card.style.display = 'none';
-            }
+    function setDealTier(tier) {
+        state.tier = tier;
+        document.querySelectorAll('.deal-tier-btn').forEach(btn => {
+            btn.className = "deal-tier-btn px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs tracking-wide transition flex items-center gap-1.5 border border-slate-700";
+        });
+        const activeBtn = document.getElementById(`tier-pill-${tier || 'all'}`);
+        if (activeBtn) {
+            activeBtn.className = "deal-tier-btn px-3 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-xs tracking-wide transition flex items-center gap-1.5 shadow";
+        }
+        applyFilters();
+    }
+
+    function setRarity(rarity) {
+        state.rarity = rarity;
+        document.querySelectorAll('.rarity-btn').forEach(btn => {
+            btn.className = "rarity-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition";
+        });
+        const activeBtn = document.getElementById(`rarity-pill-${rarity}`);
+        if (activeBtn) {
+            activeBtn.className = "rarity-btn px-2.5 py-1.5 rounded bg-indigo-950 text-indigo-300 text-xs font-medium border border-indigo-700 transition";
+        }
+        applyFilters();
+    }
+
+    function resetAllFilters() {
+        state.tier = '';
+        state.rarity = '';
+        state.search = '';
+        state.priceMin = null;
+        state.priceMax = null;
+        state.muscle = 0;
+        state.brains = 0;
+        state.hustle = 0;
+        state.grit = 0;
+        state.rep = 0;
+        state.totalStat = 0;
+        state.greed = 0;
+        state.finesse = 0;
+        state.passion = 0;
+        state.specialties = [];
+
+        document.getElementById('search-input').value = '';
+        document.getElementById('price-min').value = '';
+        document.getElementById('price-max').value = '';
+        
+        ['muscle', 'brains', 'hustle', 'grit', 'rep'].forEach(s => {
+            document.getElementById(`filter-${s}`).value = 0;
+            document.getElementById(`val-${s}`).textContent = '0';
         });
 
-        rows.forEach(row => {
-            const name = row.getAttribute('data-name');
-            const rarity = row.getAttribute('data-rarity');
-            if (name.includes(query) || rarity.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+        document.getElementById('filter-total-stat').value = 0;
+        document.getElementById('filter-greed').value = 0;
+        document.getElementById('filter-finesse').value = 0;
+        document.getElementById('filter-passion').value = 0;
+
+        document.querySelectorAll('.specialty-cb').forEach(cb => cb.checked = false);
+
+        setDealTier('');
+        setRarity('');
+    }
+
+    function sortByHeader(column) {
+        if (state.sortBy === column) {
+            state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            state.sortBy = column;
+            state.sortOrder = 'desc';
+        }
+        applyFilters();
+    }
+
+    function applyFilters() {
+        // Read input states
+        state.search = document.getElementById('search-input').value.toLowerCase().trim();
+        state.priceMin = parseFloat(document.getElementById('price-min').value) || null;
+        state.priceMax = parseFloat(document.getElementById('price-max').value) || null;
+        
+        state.muscle = parseInt(document.getElementById('filter-muscle').value) || 0;
+        state.brains = parseInt(document.getElementById('filter-brains').value) || 0;
+        state.hustle = parseInt(document.getElementById('filter-hustle').value) || 0;
+        state.grit = parseInt(document.getElementById('filter-grit').value) || 0;
+        state.rep = parseInt(document.getElementById('filter-rep').value) || 0;
+
+        state.totalStat = parseInt(document.getElementById('filter-total-stat').value) || 0;
+        state.greed = parseInt(document.getElementById('filter-greed').value) || 0;
+        state.finesse = parseInt(document.getElementById('filter-finesse').value) || 0;
+        state.passion = parseInt(document.getElementById('filter-passion').value) || 0;
+
+        state.specialties = [];
+        document.querySelectorAll('.specialty-cb:checked').forEach(cb => {
+            state.specialties.push(cb.value);
         });
 
-        const countEl = document.getElementById('visible-count');
-        if (countEl) countEl.innerText = count;
+        const sortSelectVal = document.getElementById('sort-select').value;
+        if (sortSelectVal) {
+            const parts = sortSelectVal.split('_');
+            state.sortOrder = parts.pop();
+            state.sortBy = parts.join('_');
+        }
+
+        // Count totals per tier across ALL items (before filtering)
+        let counts = { all: allListings.length, steals: 0, great: 0, good: 0 };
+        allListings.forEach(item => {
+            const ds = item.deal_score || 0;
+            if (ds >= 80) counts.steals++;
+            else if (ds >= 65) counts.great++;
+            else if (ds >= 50) counts.good++;
+        });
+
+        document.getElementById('count-all').textContent = counts.all;
+        document.getElementById('count-steals').textContent = counts.steals;
+        document.getElementById('count-great').textContent = counts.great;
+        document.getElementById('count-good').textContent = counts.good;
+
+        // Filter items
+        let filtered = allListings.filter(item => {
+            const ds = item.deal_score || 0;
+            // Deal Tier filter
+            if (state.tier === 'steals' && ds < 80) return false;
+            if (state.tier === 'great' && (ds < 65 || ds >= 80)) return false;
+            if (state.tier === 'good' && (ds < 50 || ds >= 65)) return false;
+
+            // Rarity filter
+            if (state.rarity && (item.rarity || '').toLowerCase() !== state.rarity.toLowerCase()) return false;
+
+            // Search query filter
+            if (state.search) {
+                const name = (item.name || item.capo_name || '').toLowerCase();
+                const specialty = (item.specialty || '').toLowerCase();
+                const rarity = (item.rarity || '').toLowerCase();
+                if (!name.includes(state.search) && !specialty.includes(state.search) && !rarity.includes(state.search)) {
+                    return false;
+                }
+            }
+
+            // Price range filter
+            const price = item.price_lamports || item.price || 0;
+            if (state.priceMin !== null && price < state.priceMin) return false;
+            if (state.priceMax !== null && price > state.priceMax) return false;
+
+            // Combat stats filters
+            if ((item.muscle || 0) < state.muscle) return false;
+            if ((item.brains || 0) < state.brains) return false;
+            if ((item.hustle || 0) < state.hustle) return false;
+            if ((item.grit || 0) < state.grit) return false;
+            if ((item.rep || 0) < state.rep) return false;
+
+            // Total stat filter
+            if ((item.total_stat || 0) < state.totalStat) return false;
+
+            // Traits filters
+            if ((item.greed || 0) < state.greed) return false;
+            if ((item.finesse || 0) < state.finesse) return false;
+            if ((item.passion || 0) < state.passion) return false;
+
+            // Specialties multi-select filter
+            if (state.specialties.length > 0) {
+                const itemSpec = (item.specialty || '').toLowerCase();
+                if (!state.specialties.includes(itemSpec)) return false;
+            }
+
+            return true;
+        });
+
+        // Sorting
+        filtered.sort((a, b) => {
+            let valA = 0, valB = 0;
+            switch (state.sortBy) {
+                case 'deal_score':
+                    valA = a.deal_score || 0;
+                    valB = b.deal_score || 0;
+                    break;
+                case 'price':
+                case '_price_usd':
+                    valA = a.price_lamports || a.price || 0;
+                    valB = b.price_lamports || b.price || 0;
+                    break;
+                case 'total_stat':
+                    valA = a.total_stat || 0;
+                    valB = b.total_stat || 0;
+                    break;
+                case 'muscle':
+                    valA = a.muscle || 0;
+                    valB = b.muscle || 0;
+                    break;
+                case 'brains':
+                    valA = a.brains || 0;
+                    valB = b.brains || 0;
+                    break;
+                case 'hustle':
+                    valA = a.hustle || 0;
+                    valB = b.hustle || 0;
+                    break;
+                case 'grit':
+                    valA = a.grit || 0;
+                    valB = b.grit || 0;
+                    break;
+                case 'rep':
+                    valA = a.rep || 0;
+                    valB = b.rep || 0;
+                    break;
+                case 'name':
+                    valA = (a.name || a.capo_name || '');
+                    valB = (b.name || b.capo_name || '');
+                    return state.sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                case 'rarity':
+                    valA = (a.rarity || '');
+                    valB = (b.rarity || '');
+                    return state.sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                case 'listed':
+                case 'listed_at':
+                    valA = new Date(a.listed_at || 0).getTime();
+                    valB = new Date(b.listed_at || 0).getTime();
+                    break;
+                default:
+                    valA = a.deal_score || 0;
+                    valB = b.deal_score || 0;
+            }
+            return state.sortOrder === 'asc' ? valA - valB : valB - valA;
+        });
+
+        renderTable(filtered);
+
+        // Update URL query params without reloading
+        const params = new URLSearchParams();
+        if (state.tier) params.set('tier', state.tier);
+        if (state.rarity) params.set('rarity', state.rarity);
+        if (state.search) params.set('q', state.search);
+        const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+        window.history.replaceState({}, '', newUrl);
     }
 
-    function toggleFilters() {
-        alert('Advanced filters menu (Deal score, traits, tier) is active via rarity pills and search!');
+    function renderTable(items) {
+        const tbody = document.getElementById('listings-tbody');
+        const emptyState = document.getElementById('empty-state');
+        document.getElementById('result-count').textContent = items.length;
+
+        tbody.innerHTML = '';
+
+        if (items.length === 0) {
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        emptyState.classList.add('hidden');
+
+        items.forEach((item, index) => {
+            const ds = item.deal_score || 0;
+            let dealBadge = '';
+            if (ds >= 80) {
+                dealBadge = `<span class="px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800 text-[10px] font-bold">🔥 Steal (${ds})</span>`;
+            } else if (ds >= 65) {
+                dealBadge = `<span class="px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold">⚡ Great (${ds})</span>`;
+            } else if (ds >= 50) {
+                dealBadge = `<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">✍️ Good (${ds})</span>`;
+            } else {
+                dealBadge = `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-semibold">${ds}</span>`;
+            }
+
+            const rarity = (item.rarity || 'common').toLowerCase();
+            let rarityColor = 'text-slate-300 bg-slate-800 border-slate-700';
+            if (rarity === 'rare') rarityColor = 'text-blue-400 bg-blue-950/50 border-blue-800';
+            else if (rarity === 'epic') rarityColor = 'text-purple-400 bg-purple-950/50 border-purple-800';
+            else if (rarity === 'legendary') rarityColor = 'text-amber-400 bg-amber-950/50 border-amber-800';
+            else if (rarity === 'god') rarityColor = 'text-red-400 bg-red-950/50 border-red-800';
+            else if (rarity === 'founder') rarityColor = 'text-teal-400 bg-teal-950/50 border-teal-800';
+
+            const name = item.name || item.capo_name || `Capo #${item.id || index}`;
+            const specialty = item.specialty || 'enforcer';
+            const isFounder = rarity === 'founder' || item.is_founder;
+
+            const priceLamports = (item.price_lamports || item.price || 0).toLocaleString();
+            const priceUsd = item.price_usd ? `$${parseFloat(item.price_usd).toFixed(2)}` : '';
+
+            const rowId = `row-details-${index}`;
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-800/50 transition cursor-pointer border-b border-slate-800/60";
+            tr.onclick = () => toggleRowDetails(rowId);
+
+            tr.innerHTML = `
+                <td class="py-3 px-4 whitespace-nowrap">${dealBadge}</td>
+                <td class="py-3 px-4">
+                    <div class="font-bold text-slate-100 flex items-center gap-1.5">
+                        <span>${name}</span>
+                        ${isFounder ? '<span class="px-1.5 py-0.2 rounded bg-teal-950 text-teal-400 border border-teal-800 text-[9px] font-semibold">Founder</span>' : ''}
+                    </div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wide">${specialty}</div>
+                </td>
+                <td class="py-3 px-4 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded border text-[10px] font-semibold uppercase ${rarityColor}">${rarity}</span>
+                </td>
+                <td class="py-3 px-4 text-right whitespace-nowrap">
+                    <div class="font-bold text-slate-100">${priceLamports} <span class="text-[10px] text-slate-400">LAMP</span></div>
+                    ${priceUsd ? `<div class="text-[10px] text-slate-400">${priceUsd}</div>` : ''}
+                </td>
+                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.muscle || 0}</td>
+                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.brains || 0}</td>
+                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.hustle || 0}</td>
+                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.grit || 0}</td>
+                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.rep || 0}</td>
+                <td class="py-3 px-4 text-center font-bold text-indigo-400 font-mono">${item.total_stat || 0}</td>
+                <td class="py-3 px-4 text-slate-400 text-[11px]">
+                    G:${item.greed || '-'} F:${item.finesse || '-'} P:${item.passion || '-'}
+                </td>
+                <td class="py-3 px-4 text-center whitespace-nowrap">
+                    <button class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] font-semibold border border-slate-700 transition">
+                        Inspect ▼
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            // Expandable sub-row (akordeon)
+            const detailTr = document.createElement('tr');
+            detailTr.id = rowId;
+            detailTr.className = "hidden bg-slate-950/90 border-b border-slate-800";
+            
+            const fairPrice = item.fair_price_lamports ? `${Math.round(item.fair_price_lamports).toLocaleString()} LAMP` : 'N/A';
+            const valueRatio = item.value_efficiency_ratio ? parseFloat(item.value_efficiency_ratio).toFixed(2) : 'N/A';
+            const shrinkageDev = item.empirical_bayes_dev ? parseFloat(item.empirical_bayes_dev).toFixed(2) : 'N/A';
+            const booster = item.floor_snipe_booster ? `${item.floor_snipe_booster}x` : '1.0x';
+            const sellerId = item.seller_id || item.seller || 'Unknown';
+            const listedAt = item.listed_at ? new Date(item.listed_at).toLocaleString() : 'Recent';
+
+            detailTr.innerHTML = `
+                <td colspan="12" class="p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-900 border border-slate-800 rounded-lg p-4 text-xs font-mono">
+                        <div>
+                            <span class="text-slate-500 block uppercase text-[10px]">Fair Price (OLS Regression)</span>
+                            <strong class="text-indigo-400 text-sm">${fairPrice}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block uppercase text-[10px]">Value Efficiency Ratio</span>
+                            <strong class="text-emerald-400 text-sm">${valueRatio}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block uppercase text-[10px]">Empirical Bayes Shrinkage Dev</span>
+                            <strong class="text-amber-400 text-sm">${shrinkageDev}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block uppercase text-[10px]">Floor Snipe Booster</span>
+                            <strong class="text-teal-400 text-sm">${booster}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block uppercase text-[10px]">Listing Metadata</span>
+                            <div class="text-slate-300">Seller: ${sellerId}</div>
+                            <div class="text-slate-500 text-[10px]">Listed: ${listedAt}</div>
+                        </div>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(detailTr);
+        });
     }
+
+    function toggleRowDetails(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) {
+            row.classList.toggle('hidden');
+        }
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+        applyFilters();
+    });
 </script>
 {% endblock %}

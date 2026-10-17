@@ -61,7 +61,7 @@ def test_index_route(mock_fetch, client):
     response = client.get("/")
     assert response.status_code == 200
     html = response.text
-    assert "Pawn Shop" in html
+    assert "CharFinder" in html
     assert "Test Boss" in html
     assert "Test Soldier" in html
     assert "🔥 Steal" in html

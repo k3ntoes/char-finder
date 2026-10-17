@@ -177,7 +177,7 @@ def test_e2e_fastapi_dashboard_and_filtering(mock_fetch, client) -> None:
     response = client.get("/")
     assert response.status_code == 200
     html = response.text
-    assert "Pawn Shop" in html
+    assert "CharFinder" in html
     assert "Alpha Capo" in html
     assert "Beta Soldier" in html
     assert "🔥 Steal" in html

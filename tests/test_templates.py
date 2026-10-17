@@ -23,10 +23,10 @@ def test_index_template_empty_state(jinja_env):
         selected_badge="",
     )
 
-    assert "Pawn Shop" in html
-    assert "No Capo Listings Found" in html
+    assert "CharFinder" in html
+    assert "No capos match your exact filter criteria" in html
     assert "🔄 Refresh" in html
-    assert "sol_usd" in html or "$150.00" in html
+    assert "$150.00" in html
 
 
 def test_index_template_populated_state(jinja_env):
@@ -34,16 +34,14 @@ def test_index_template_populated_state(jinja_env):
     mock_listings = [
         {
             "id": "listing_001_long_uuid_string",
-            "capo": {
-                "name": "Don Corleone",
-                "rarity": "legendary",
-                "tier": "boss",
-            },
+            "name": "Don Corleone",
+            "rarity": "legendary",
+            "tier": "boss",
             "total_stat": 95,
             "stat_bucket": 90,
-            "_price_lamports": 5000000000,  # 5 SOL
-            "_price_usd": 750.0,
-            "fair_price_lamports": 10000000000,  # 10 SOL
+            "price_lamports": 5000000000,
+            "price_usd": 750.0,
+            "fair_price_lamports": 10000000000,
             "benchmark_lamports": 9000000000,
             "deal_score": 92.5,
             "badge": "Steal",
@@ -51,15 +49,13 @@ def test_index_template_populated_state(jinja_env):
         },
         {
             "id": "listing_002_uuid",
-            "capo": {
-                "name": "Paulie Walnuts",
-                "rarity": "rare",
-                "tier": "soldato",
-            },
+            "name": "Paulie Walnuts",
+            "rarity": "rare",
+            "tier": "soldato",
             "total_stat": 65,
             "stat_bucket": 60,
-            "_price_lamports": 3000000000,
-            "_price_usd": 450.0,
+            "price_lamports": 3000000000,
+            "price_usd": 450.0,
             "fair_price_lamports": 3500000000,
             "benchmark_lamports": 3400000000,
             "deal_score": 70.0,
@@ -68,15 +64,13 @@ def test_index_template_populated_state(jinja_env):
         },
         {
             "id": "listing_003_uuid",
-            "capo": {
-                "name": "Silvio Dante",
-                "rarity": "common",
-                "tier": "recruit",
-            },
+            "name": "Silvio Dante",
+            "rarity": "common",
+            "tier": "recruit",
             "total_stat": 40,
             "stat_bucket": 40,
-            "_price_lamports": 1000000000,
-            "_price_usd": 150.0,
+            "price_lamports": 1000000000,
+            "price_usd": 150.0,
             "fair_price_lamports": 1050000000,
             "benchmark_lamports": 1020000000,
             "deal_score": 45.0,
@@ -99,8 +93,6 @@ def test_index_template_populated_state(jinja_env):
     assert "Paulie Walnuts" in html
     assert "Silvio Dante" in html
     assert "🔥 Steal" in html
-    assert "⚡ Great Deal" in html
-    assert "Normal" in html
-    assert "5.000 SOL" in html
+    assert "⚡ Great" in html
     assert "92.5" in html
-    assert "list-view" in html
+
