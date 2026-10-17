@@ -25,7 +25,7 @@ def test_index_template_empty_state(jinja_env):
 
     assert "CharFinder" in html
     assert "No capos match your exact filter criteria" in html
-    assert "🔄 Refresh" in html
+    assert "Refresh" in html
     assert "$150.00" in html
 
 

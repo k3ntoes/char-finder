@@ -69,8 +69,8 @@
             <div class="md:col-span-3">
                 <select id="sort-select" onchange="applyFilters()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
                     <option value="deal_score_desc">Sort: Deal Score (High → Low)</option>
-                    <option value="price_asc">Sort: Price Lamports (Low → High)</option>
-                    <option value="price_desc">Sort: Price Lamports (High → Low)</option>
+                    <option value="price_asc">Sort: In-Game Price USD (Low → High)</option>
+                    <option value="price_desc">Sort: In-Game Price USD (High → Low)</option>
                     <option value="total_desc">Sort: Total Stat (High → Low)</option>
                     <option value="muscle_desc">Sort: Muscle (High → Low)</option>
                     <option value="brains_desc">Sort: Brains (High → Low)</option>
@@ -216,7 +216,7 @@
                         <th class="py-3 px-4 cursor-pointer hover:text-slate-200" onclick="sortByHeader('deal_score')">DEAL ↕</th>
                         <th class="py-3 px-4 cursor-pointer hover:text-slate-200" onclick="sortByHeader('name')">CAPO / ROLE ↕</th>
                         <th class="py-3 px-4 cursor-pointer hover:text-slate-200" onclick="sortByHeader('rarity')">RARITY ↕</th>
-                        <th class="py-3 px-4 text-right cursor-pointer hover:text-slate-200" onclick="sortByHeader('price')">PRICE ↕</th>
+                        <th class="py-3 px-4 text-right cursor-pointer hover:text-slate-200" onclick="sortByHeader('price')">IN-GAME PRICE / SOL ↕</th>
                         <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('muscle')">MUS ↕</th>
                         <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('brains')">BRA ↕</th>
                         <th class="py-3 px-3 text-center cursor-pointer hover:text-slate-200" onclick="sortByHeader('hustle')">HUS ↕</th>
@@ -420,6 +420,7 @@
 
         // Filter items
         let filtered = allListings.filter(item => {
+            const capo = item.capo || item;
             const ds = item.deal_score || 0;
             // Deal Tier filter
             if (state.tier === 'steals' && ds < 80) return false;
@@ -427,41 +428,53 @@
             if (state.tier === 'good' && (ds < 50 || ds >= 65)) return false;
 
             // Rarity filter
-            if (state.rarity && (item.rarity || '').toLowerCase() !== state.rarity.toLowerCase()) return false;
+            const rarity = (capo.rarity || item.rarity || '').toLowerCase();
+            if (state.rarity && rarity !== state.rarity.toLowerCase()) return false;
 
             // Search query filter
             if (state.search) {
-                const name = (item.name || item.capo_name || '').toLowerCase();
-                const specialty = (item.specialty || '').toLowerCase();
-                const rarity = (item.rarity || '').toLowerCase();
-                if (!name.includes(state.search) && !specialty.includes(state.search) && !rarity.includes(state.search)) {
+                const charName = (capo.character_name || '').toLowerCase();
+                const capoName = (capo.name || item.name || '').toLowerCase();
+                const specialty = (capo.specialty || item.specialty || '').toLowerCase();
+                if (!charName.includes(state.search) && !capoName.includes(state.search) && !specialty.includes(state.search) && !rarity.includes(state.search)) {
                     return false;
                 }
             }
 
             // Price range filter
-            const price = item.price_lamports || item.price || 0;
+            const price = parseFloat(item.priceLamports || item.price_lamports || item.price || 0);
             if (state.priceMin !== null && price < state.priceMin) return false;
             if (state.priceMax !== null && price > state.priceMax) return false;
 
             // Combat stats filters
-            if ((item.muscle || 0) < state.muscle) return false;
-            if ((item.brains || 0) < state.brains) return false;
-            if ((item.hustle || 0) < state.hustle) return false;
-            if ((item.grit || 0) < state.grit) return false;
-            if ((item.rep || 0) < state.rep) return false;
+            const muscle = capo.stat_muscle || item.muscle || 0;
+            const brains = capo.stat_brains || item.brains || 0;
+            const hustle = capo.stat_hustle || item.hustle || 0;
+            const grit = capo.stat_grit || item.grit || 0;
+            const rep = capo.stat_rep || item.rep || 0;
+            const totalStat = capo.total_stat || item.total_stat || (muscle + brains + hustle + grit + rep);
+
+            if (muscle < state.muscle) return false;
+            if (brains < state.brains) return false;
+            if (hustle < state.hustle) return false;
+            if (grit < state.grit) return false;
+            if (rep < state.rep) return false;
 
             // Total stat filter
-            if ((item.total_stat || 0) < state.totalStat) return false;
+            if (totalStat < state.totalStat) return false;
 
             // Traits filters
-            if ((item.greed || 0) < state.greed) return false;
-            if ((item.finesse || 0) < state.finesse) return false;
-            if ((item.passion || 0) < state.passion) return false;
+            const greed = capo.trait_greed || item.greed || 0;
+            const finesse = capo.trait_finesse || item.finesse || 0;
+            const passion = capo.trait_passion || item.passion || 0;
+
+            if (greed < state.greed) return false;
+            if (finesse < state.finesse) return false;
+            if (passion < state.passion) return false;
 
             // Specialties multi-select filter
             if (state.specialties.length > 0) {
-                const itemSpec = (item.specialty || '').toLowerCase();
+                const itemSpec = (capo.specialty || item.specialty || '').toLowerCase();
                 if (!state.specialties.includes(itemSpec)) return false;
             }
 
@@ -470,6 +483,8 @@
 
         // Sorting
         filtered.sort((a, b) => {
+            const capoA = a.capo || a;
+            const capoB = b.capo || b;
             let valA = 0, valB = 0;
             switch (state.sortBy) {
                 case 'deal_score':
@@ -478,45 +493,45 @@
                     break;
                 case 'price':
                 case '_price_usd':
-                    valA = a.price_lamports || a.price || 0;
-                    valB = b.price_lamports || b.price || 0;
+                    valA = parseFloat(a.allInUsd || a.priceUsd || a.price_usd || a.priceLamports || a.price_lamports || a.price || 0);
+                    valB = parseFloat(b.allInUsd || b.priceUsd || b.price_usd || b.priceLamports || b.price_lamports || b.price || 0);
                     break;
                 case 'total_stat':
-                    valA = a.total_stat || 0;
-                    valB = b.total_stat || 0;
+                    valA = capoA.total_stat || a.total_stat || ((capoA.stat_muscle||0)+(capoA.stat_brains||0)+(capoA.stat_hustle||0)+(capoA.stat_grit||0)+(capoA.stat_rep||0));
+                    valB = capoB.total_stat || b.total_stat || ((capoB.stat_muscle||0)+(capoB.stat_brains||0)+(capoB.stat_hustle||0)+(capoB.stat_grit||0)+(capoB.stat_rep||0));
                     break;
                 case 'muscle':
-                    valA = a.muscle || 0;
-                    valB = b.muscle || 0;
+                    valA = capoA.stat_muscle || a.muscle || 0;
+                    valB = capoB.stat_muscle || b.muscle || 0;
                     break;
                 case 'brains':
-                    valA = a.brains || 0;
-                    valB = b.brains || 0;
+                    valA = capoA.stat_brains || a.brains || 0;
+                    valB = capoB.stat_brains || b.brains || 0;
                     break;
                 case 'hustle':
-                    valA = a.hustle || 0;
-                    valB = b.hustle || 0;
+                    valA = capoA.stat_hustle || a.hustle || 0;
+                    valB = capoB.stat_hustle || b.hustle || 0;
                     break;
                 case 'grit':
-                    valA = a.grit || 0;
-                    valB = b.grit || 0;
+                    valA = capoA.stat_grit || a.grit || 0;
+                    valB = capoB.stat_grit || b.grit || 0;
                     break;
                 case 'rep':
-                    valA = a.rep || 0;
-                    valB = b.rep || 0;
+                    valA = capoA.stat_rep || a.rep || 0;
+                    valB = capoB.stat_rep || b.rep || 0;
                     break;
                 case 'name':
-                    valA = (a.name || a.capo_name || '');
-                    valB = (b.name || b.capo_name || '');
+                    valA = (capoA.character_name || capoA.name || a.name || '');
+                    valB = (capoB.character_name || capoB.name || b.name || '');
                     return state.sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
                 case 'rarity':
-                    valA = (a.rarity || '');
-                    valB = (b.rarity || '');
+                    valA = (capoA.rarity || a.rarity || '');
+                    valB = (capoB.rarity || b.rarity || '');
                     return state.sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
                 case 'listed':
                 case 'listed_at':
-                    valA = new Date(a.listed_at || 0).getTime();
-                    valB = new Date(b.listed_at || 0).getTime();
+                    valA = new Date(a.listedAt || a.listed_at || 0).getTime();
+                    valB = new Date(b.listedAt || b.listed_at || 0).getTime();
                     break;
                 default:
                     valA = a.deal_score || 0;
@@ -536,6 +551,18 @@
         window.history.replaceState({}, '', newUrl);
     }
 
+    function copyToClipboard(text, btnElement) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = '✅';
+            setTimeout(() => {
+                btnElement.innerHTML = originalHTML;
+            }, 1000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }
+
     function renderTable(items) {
         const tbody = document.getElementById('listings-tbody');
         const emptyState = document.getElementById('empty-state');
@@ -550,6 +577,7 @@
         emptyState.classList.add('hidden');
 
         items.forEach((item, index) => {
+            const capo = item.capo || item;
             const ds = item.deal_score || 0;
             let dealBadge = '';
             if (ds >= 80) {
@@ -562,7 +590,7 @@
                 dealBadge = `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-semibold">${ds}</span>`;
             }
 
-            const rarity = (item.rarity || 'common').toLowerCase();
+            const rarity = (capo.rarity || item.rarity || 'common').toLowerCase();
             let rarityColor = 'text-slate-300 bg-slate-800 border-slate-700';
             if (rarity === 'rare') rarityColor = 'text-blue-400 bg-blue-950/50 border-blue-800';
             else if (rarity === 'epic') rarityColor = 'text-purple-400 bg-purple-950/50 border-purple-800';
@@ -570,47 +598,79 @@
             else if (rarity === 'god') rarityColor = 'text-red-400 bg-red-950/50 border-red-800';
             else if (rarity === 'founder') rarityColor = 'text-teal-400 bg-teal-950/50 border-teal-800';
 
-            const name = item.name || item.capo_name || `Capo #${item.id || index}`;
-            const specialty = item.specialty || 'enforcer';
-            const isFounder = rarity === 'founder' || item.is_founder;
+            const charName = capo.character_name || capo.name || item.name || `Capo #${item.id || index}`;
+            const capoNickname = capo.name && capo.character_name ? `"${capo.name}"` : '';
+            const specialty = (capo.specialty || item.specialty || 'enforcer');
+            const specialtyCapitalized = specialty.charAt(0).toUpperCase() + specialty.slice(1);
+            const isFounder = rarity === 'founder' || capo.is_founder || item.is_founder;
 
-            const priceLamports = (item.price_lamports || item.price || 0).toLocaleString();
-            const priceUsd = item.price_usd ? `$${parseFloat(item.price_usd).toFixed(2)}` : '';
+            // Price calculation (allInUsd / priceUsd fallback + Lamports / SOL)
+            const allInUsdVal = parseFloat(item.allInUsd || item.priceUsd || item.price_usd || 0);
+            const mainUsdStr = allInUsdVal > 0 ? `$${allInUsdVal.toFixed(2)}` : (item.priceUsd ? `$${parseFloat(item.priceUsd).toFixed(2)}` : '$0.00');
 
+            const priceLampsVal = parseFloat(item.priceLamports || item.price_lamports || item.price || 0);
+            const millionsLamps = (priceLampsVal / 1_000_000).toFixed(2);
+            const solAmount = (priceLampsVal / 1_000_000_000).toFixed(4);
+            const secondaryDetailStr = `${millionsLamps}M LAMP • ${solAmount} SOL`;
+
+            // Stats
+            const muscle = capo.stat_muscle ?? item.muscle ?? 0;
+            const brains = capo.stat_brains ?? item.brains ?? 0;
+            const hustle = capo.stat_hustle ?? item.hustle ?? 0;
+            const grit = capo.stat_grit ?? item.grit ?? 0;
+            const rep = capo.stat_rep ?? item.rep ?? 0;
+            const totalStat = capo.total_stat ?? item.total_stat ?? (muscle + brains + hustle + grit + rep);
+
+            // Traits
+            const greed = capo.trait_greed ?? item.greed ?? '-';
+            const finesse = capo.trait_finesse ?? item.finesse ?? '-';
+            const passion = capo.trait_passion ?? item.passion ?? '-';
+
+            const marketUrl = `https://thesyndicate.io/market/${item.id}`;
             const rowId = `row-details-${index}`;
 
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-800/50 transition cursor-pointer border-b border-slate-800/60";
-            tr.onclick = () => toggleRowDetails(rowId);
+            tr.onclick = (e) => {
+                if (e.target.closest('button') || e.target.closest('a')) return;
+                toggleRowDetails(rowId);
+            };
 
             tr.innerHTML = `
                 <td class="py-3 px-4 whitespace-nowrap">${dealBadge}</td>
                 <td class="py-3 px-4">
                     <div class="font-bold text-slate-100 flex items-center gap-1.5">
-                        <span>${name}</span>
+                        <span class="text-indigo-200">${charName}</span>
+                        <button onclick="copyToClipboard('${charName.replace(/'/g, "\\'")}', this)" title="Copy Name" class="text-[10px] hover:opacity-75 transition">📋</button>
                         ${isFounder ? '<span class="px-1.5 py-0.2 rounded bg-teal-950 text-teal-400 border border-teal-800 text-[9px] font-semibold">Founder</span>' : ''}
                     </div>
-                    <div class="text-[10px] text-slate-400 uppercase tracking-wide">${specialty}</div>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400">
+                        ${capoNickname ? `<span class="italic text-slate-300">${capoNickname}</span>` : ''}
+                        <span class="px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 uppercase font-semibold text-indigo-300">${specialtyCapitalized}</span>
+                    </div>
                 </td>
                 <td class="py-3 px-4 whitespace-nowrap">
                     <span class="px-2 py-0.5 rounded border text-[10px] font-semibold uppercase ${rarityColor}">${rarity}</span>
                 </td>
                 <td class="py-3 px-4 text-right whitespace-nowrap">
-                    <div class="font-bold text-slate-100">${priceLamports} <span class="text-[10px] text-slate-400">LAMP</span></div>
-                    ${priceUsd ? `<div class="text-[10px] text-slate-400">${priceUsd}</div>` : ''}
+                    <div class="font-bold text-slate-100 text-sm tracking-tight">${mainUsdStr}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">${secondaryDetailStr}</div>
                 </td>
-                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.muscle || 0}</td>
-                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.brains || 0}</td>
-                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.hustle || 0}</td>
-                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.grit || 0}</td>
-                <td class="py-3 px-3 text-center text-slate-300 font-mono">${item.rep || 0}</td>
-                <td class="py-3 px-4 text-center font-bold text-indigo-400 font-mono">${item.total_stat || 0}</td>
-                <td class="py-3 px-4 text-slate-400 text-[11px]">
-                    G:${item.greed || '-'} F:${item.finesse || '-'} P:${item.passion || '-'}
+                <td class="py-3 px-3 text-center text-slate-200 font-mono font-bold">${muscle}</td>
+                <td class="py-3 px-3 text-center text-slate-200 font-mono font-bold">${brains}</td>
+                <td class="py-3 px-3 text-center text-slate-200 font-mono font-bold">${hustle}</td>
+                <td class="py-3 px-3 text-center text-slate-200 font-mono font-bold">${grit}</td>
+                <td class="py-3 px-3 text-center text-slate-200 font-mono font-bold">${rep}</td>
+                <td class="py-3 px-4 text-center font-bold text-indigo-400 font-mono text-sm">${totalStat}</td>
+                <td class="py-3 px-4 text-slate-300 text-[11px] font-mono">
+                    G:<span class="text-indigo-300 font-bold">${greed}</span> F:<span class="text-indigo-300 font-bold">${finesse}</span> P:<span class="text-indigo-300 font-bold">${passion}</span>
                 </td>
-                <td class="py-3 px-4 text-center whitespace-nowrap">
-                    <button class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] font-semibold border border-slate-700 transition">
-                        Inspect ▼
+                <td class="py-3 px-4 text-center whitespace-nowrap flex items-center justify-center gap-1.5">
+                    <a href="${marketUrl}" target="_blank" onclick="event.stopPropagation()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-semibold transition flex items-center gap-1 shadow">
+                        Market ↗
+                    </a>
+                    <button onclick="toggleRowDetails('${rowId}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] border border-slate-700 transition">
+                        ▼
                     </button>
                 </td>
             `;
@@ -621,12 +681,12 @@
             detailTr.id = rowId;
             detailTr.className = "hidden bg-slate-950/90 border-b border-slate-800";
             
-            const fairPrice = item.fair_price_lamports ? `${Math.round(item.fair_price_lamports).toLocaleString()} LAMP` : 'N/A';
-            const valueRatio = item.value_efficiency_ratio ? parseFloat(item.value_efficiency_ratio).toFixed(2) : 'N/A';
-            const shrinkageDev = item.empirical_bayes_dev ? parseFloat(item.empirical_bayes_dev).toFixed(2) : 'N/A';
-            const booster = item.floor_snipe_booster ? `${item.floor_snipe_booster}x` : '1.0x';
-            const sellerId = item.seller_id || item.seller || 'Unknown';
-            const listedAt = item.listed_at ? new Date(item.listed_at).toLocaleString() : 'Recent';
+            const fairPrice = item.fair_price ? `${Number(item.fair_price).toLocaleString()} LAMP` : (item.fair_price_lamports ? `${Math.round(item.fair_price_lamports).toLocaleString()} LAMP` : 'N/A');
+            const valueRatio = item.val_ratio !== undefined ? `${item.val_ratio}x` : (item.value_efficiency_ratio ? `${item.value_efficiency_ratio}x` : 'N/A');
+            const shrinkageDev = item.bayes_dev !== undefined ? `${item.bayes_dev >= 0 ? '+' : ''}${item.bayes_dev}%` : (item.empirical_bayes_dev || 'N/A');
+            const booster = item.floor_bonus !== undefined ? `${item.floor_bonus}x` : (item.floor_snipe_booster ? `${item.floor_snipe_booster}x` : '1.0x');
+            const sellerId = item.sellerId || item.seller_id || item.seller || 'Unknown';
+            const listedAt = item.listedAt || item.listed_at ? new Date(item.listedAt || item.listed_at).toLocaleString() : 'Recent';
 
             detailTr.innerHTML = `
                 <td colspan="12" class="p-4">

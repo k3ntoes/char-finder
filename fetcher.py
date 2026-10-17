@@ -213,14 +213,18 @@ def calculate_hbds_scores(
         prices = rarity_prices[r]
         n = len(stats)
         floor_lamps = float(floors.get(r, {}).get("lamports", 0) or 0)
+        min_s = min(stats) if stats else 0
 
         if n > 1:
             mean_s = sum(stats) / n
             mean_p = sum(prices) / n
             var_s = sum((s - mean_s) ** 2 for s in stats)
             cov_sp = sum((stats[i] - mean_s) * (prices[i] - mean_p) for i in range(n))
-            slope = max(0.0, cov_sp / var_s if var_s > 0 else 0.0)
-            intercept = max(floor_lamps, mean_p - slope * mean_s)
+            slope = max(0.0, cov_sp / var_s if var_s > 0 else (mean_p - floor_lamps) / max(1.0, mean_s - min_s))
+            if floor_lamps > 0:
+                intercept = floor_lamps
+            else:
+                intercept = max(1000.0, mean_p - slope * mean_s)
         else:
             slope = 0.0
             intercept = floor_lamps if floor_lamps > 0 else (prices[0] if prices else 1000.0)
@@ -261,6 +265,11 @@ def calculate_hbds_scores(
         floor_lamps = float(floors.get(r, {}).get("lamports", 0) or 0)
         intercept, slope = ols_params.get(r, (floor_lamps, 0.0))
         fair_price = intercept + slope * s
+
+        median_stat = rarity_median_stat.get(r, 50.0)
+        if s > median_stat * 1.5:
+            fair_price += slope * s * (0.5 * ((s - median_stat) / median_stat))
+
         if fair_price <= 0:
             fair_price = floor_lamps if floor_lamps > 0 else 1000.0
 
@@ -275,7 +284,6 @@ def calculate_hbds_scores(
         val_score = (s / p) if p > 0 else 0.0
         val_ratio = (val_score / median_val) if median_val > 0 else 1.0
 
-        median_stat = rarity_median_stat.get(r, 50.0)
         if floor_lamps > 0 and p <= floor_lamps * 1.15 and s > median_stat:
             floor_bonus = min(1.0, (s - median_stat) / median_stat) if median_stat > 0 else 0.0
         else:
@@ -291,6 +299,11 @@ def calculate_hbds_scores(
 
         if disc_fair >= 0.99 or (floor_lamps > 0 and p <= floor_lamps * 0.1):
             base_score = max(base_score, 85.0)
+
+        if s < median_stat and median_stat > 0:
+            stat_ratio = max(0.1, s / median_stat)
+            base_score *= (stat_ratio ** 1.5)
+            base_score = min(base_score, 59.9)
 
         deal_score = round(min(100.0, max(0.0, base_score)), 1)
 
@@ -320,12 +333,20 @@ def calculate_hbds_scores(
 
         item_copy = dict(item)
         item_copy["fair_price_lamports"] = round(fair_price, 2)
+        item_copy["fair_price"] = round(fair_price, 0)
         item_copy["benchmark_lamports"] = round(benchmark, 2)
         item_copy["deal_score"] = deal_score
         item_copy["badge"] = badge
         item_copy["explain"] = explain
         item_copy["total_stat"] = s
         item_copy["stat_bucket"] = b
+        item_copy["val_ratio"] = round(val_ratio, 2)
+        item_copy["disc_bucket"] = round(disc_bucket, 4)
+        bayes_dev = round(disc_bucket * 100, 1)
+        item_copy["bayes_dev"] = bayes_dev
+        floor_bonus_val = round(1.0 + floor_bonus, 2)
+        item_copy["floor_bonus"] = floor_bonus_val
+        item_copy["floor_snipe_booster"] = floor_bonus_val
 
         scored_listings.append(item_copy)
 

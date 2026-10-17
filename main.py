@@ -222,6 +222,7 @@ async def api_refresh():
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.post("/api/refresh")
 @app.get("/api/refresh")
 async def api_refresh_json():
     """API endpoint to trigger refresh and return JSON result."""
@@ -230,7 +231,7 @@ async def api_refresh_json():
         if result.get("status") == "success":
             _market_cache.clear()
             _market_cache.update(result)
-            logger.info("Market data refreshed successfully via GET /api/refresh.")
+            logger.info("Market data refreshed successfully via /api/refresh.")
         return result
     except Exception as e:
         logger.error(f"Error during API market refresh: {e}")

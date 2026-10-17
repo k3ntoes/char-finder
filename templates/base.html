@@ -77,11 +77,35 @@
                     Synced: {{ last_sync }}
                 </div>
                 {% endif %}
-                <form action="/api/refresh" method="POST" class="inline">
-                    <button type="submit" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 transition flex items-center gap-1 font-medium shadow-sm">
-                        🔄 Refresh
-                    </button>
-                </form>
+                <button type="button" id="refreshBtn" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 transition flex items-center gap-1 font-medium shadow-sm">
+                    🔄 <span id="refreshText">Refresh</span>
+                </button>
+                <script>
+                    document.getElementById('refreshBtn').addEventListener('click', async function() {
+                        const btn = this;
+                        const textSpan = document.getElementById('refreshText');
+                        const originalHTML = btn.innerHTML;
+                        
+                        // Set loading state
+                        btn.disabled = true;
+                        btn.classList.add('opacity-75', 'cursor-not-allowed');
+                        textSpan.textContent = 'Syncing...';
+                        
+                        try {
+                            const response = await fetch('/api/refresh', { method: 'POST' });
+                            if (response.ok) {
+                                window.location.reload();
+                            } else {
+                                throw new Error('Refresh failed');
+                            }
+                        } catch (err) {
+                            alert('Gagal memperbarui data market. Silakan coba lagi.');
+                            btn.disabled = false;
+                            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                            btn.innerHTML = originalHTML;
+                        }
+                    });
+                </script>
                 <a href="/settings" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 transition font-medium shadow-sm">
                     ⚙️ Settings
                 </a>
